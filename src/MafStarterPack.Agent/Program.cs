@@ -46,7 +46,7 @@ builder.Services.AddKeyedSingleton<AIAgent>(agentName, agent);
 builder.Services.AddOpenAIResponses();
 builder.Services.AddOpenAIConversations();
 
-builder.Services.AddAGUI();
+builder.Services.AddAGUIServer();
 
 var app = builder.Build();
 
@@ -55,9 +55,9 @@ app.MapDefaultEndpoints();
 app.MapOpenAIResponses();
 app.MapOpenAIConversations();
 
-app.MapAGUI(
-    pattern: "ag-ui",
-    aiAgent: app.Services.GetRequiredKeyedService<AIAgent>(agentName)
+app.MapAGUIServer(
+    "ag-ui",
+    app.Services.GetRequiredKeyedService<AIAgent>(agentName)
 );
 
 if (builder.Environment.IsDevelopment() == true)
