@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microsoft Foundry AI Infrastructure Architecture (Infra POV)</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-heading: #58a6ff;
+      --accent: #238636;
+    }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 20px auto;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    h1 {
+      color: var(--text-heading);
+      margin: 0 0 8px 0;
+      font-size: 24px;
+    }
+    p {
+      margin: 0;
+      color: #8b949e;
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 12px;
+      background: #1f6feb22;
+      color: #58a6ff;
+      border: 1px solid #1f6feb;
+      margin-left: 8px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      overflow-x: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .color-box {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Microsoft Foundry 3-Tier AI System &mdash; Infrastructure POV <span class="badge">Bicep / Azure</span></h1>
+    <p>Visual diagram showing Azure AI Foundry, Container Apps Environment, Storage, Networking, and RBAC Role Assignments.</p>
+  </header>
+
+  <div class="container">
+    <div class="mermaid">
+flowchart TB
+    %% DEVELOPER & EXTERNAL INGRESS
+    Dev["Developer Workstation\n(azd / az CLI / Aspire)"]
+    EndUser(["End User Browser"])
+
+    %% RESOURCE GROUP: FOUNDRY AI PLATFORM
+    subgraph RG_Foundry ["Resource Group: rg-{env-name} (AI Platform & Storage)"]
+        
+        subgraph AIServicesAccount ["Microsoft.CognitiveServices/accounts (Kind: AIServices)"]
+            AIModel["Model Deployment\ngpt-5-mini (GlobalStandard)"]
+            
+            subgraph AIProject ["Project: ai-project-{env-name}"]
+                HostedAgent["Foundry Hosted Agent\nContainer: todo-agent\n(kind: hosted)"]
+                ProjConn["Project Connections\n(hub/project connections)"]
+            end
+            
+            CapHost["Capability Host\n(capabilityHostKind: Agents)\nPublic Hosting Runtime"]
+        end
+
+        StorageAcct["Storage Account: st{token}\n(Microsoft.Storage/storageAccounts)\nBlobs: Agent state, threads, logs"]
+        ACR_Foundry["Azure Container Registry\ncr{token}.azurecr.io\n(Agent Docker Images)"]
+        AISearch["Azure AI Search\n(Optional/Phase 2 RAG)"]
+        BingSearch["Bing Grounding Connection\n(External Web Search)"]
+    end
+
+    %% RESOURCE GROUP: COMPUTE & MCP SERVICES
+    subgraph RG_MCP ["Resource Group: rg-{env-name}-mcp (or Shared RG)"]
+        CAE["Container Apps Environment\n(Managed Serverless K8s Environment)"]
+        
+        subgraph ACA_MCP ["Container App: mcp-todo"]
+            MCPPod["MCP Todo Pod (Port 8080)\nStateless HTTP Transport (/mcp)\nSQLite DB"]
+        end
+
+        subgraph ACA_Apps ["Aspire Container Apps (Production UI)"]
+            UIApp["WebUI Container (Blazor)"]
+            AgentGateway["Agent Gateway Container (ASP.NET)"]
+        end
+
+        MCP_Identity["User-Assigned Managed Identity\n(id-mcp-todo-{token})"]
+        ACR_MCP["Azure Container Registry\n(MCP Tool Images)"]
+    end
+
+    %% MONITORING & GOVERNANCE SINK
+    subgraph RG_Monitor ["Shared Observability & Telemetry"]
+        AppInsights["Application Insights\n(appi-{token})"]
+        LogAnalytics["Log Analytics Workspace\n(logs-{token})"]
+        AppInsightsDash["Azure Portal Dashboard"]
+    end
+
+    %% TRAFFIC & NETWORK CONNECTIONS
+    EndUser -- "HTTPS / WebSockets" --> UIApp
+    UIApp -- "Internal HTTP (/ag-ui)\nAspire Service Discovery" --> AgentGateway
+    AgentGateway -- "HTTPS (Azure OpenAI SDK)" --> AIProject
+    
+    HostedAgent -. "Runs inside" .-> CapHost
+    HostedAgent -- "Inference Requests" --> AIModel
+    HostedAgent -- "JSON-RPC over HTTPS\n(AZURE_RESOURCE_MCP_TODO_FQDN/mcp)" --> MCPPod
+    
+    %% BICEP PROJECT CONNECTIONS
+    ProjConn == "Connection: AzureStorageAccount (AAD)" ==> StorageAcct
+    ProjConn == "Connection: ContainerRegistry (MI)" ==> ACR_Foundry
+    ProjConn == "Connection: AppInsights (API Key / ConnectionString)" ==> AppInsights
+    ProjConn == "Connection: CognitiveSearch (AAD)" ==> AISearch
+    ProjConn == "Connection: Bing Grounding" ==> BingSearch
+
+    %% COMPUTE & RUNTIME CONNECTIONS
+    ACA_MCP -. "Hosted within" .-> CAE
+    ACA_Apps -. "Hosted within" .-> CAE
+    MCPPod -- "Uses Identity" --> MCP_Identity
+    ACR_MCP -. "Image Pull" .-> MCPPod
+    ACR_Foundry -. "Image Pull" .-> HostedAgent
+
+    %% TELEMETRY & OBSERVABILITY PIPELINES
+    UIApp -- "OTel Exporter" --> AppInsights
+    AgentGateway -- "OTel Exporter" --> AppInsights
+    MCPPod -- "OTel Exporter" --> AppInsights
+    AppInsights --> LogAnalytics
+    AppInsights --> AppInsightsDash
+
+    %% RBAC ROLE ASSIGNMENTS
+    Dev -. "Azure AI User & Cognitive Services User" .-> AIServicesAccount
+    AIProject -. "Storage Blob Data Contributor\n(ba92f5b4-2d11-453d-a403-e96b0029c9fe)" .-> StorageAcct
+    MCP_Identity -. "AcrPull Role\n(7f951dda-4ed3-4680-a7ca-43fe172d538d)" .-> ACR_MCP
+    AIProject -. "AcrPull Role" .-> ACR_Foundry
+
+    classDef ai fill:#004b87,stroke:#00a4ef,stroke-width:2px,color:#fff;
+    classDef compute fill:#1b365d,stroke:#00b294,stroke-width:2px,color:#fff;
+    classDef storage fill:#2d1b4e,stroke:#9b51e0,stroke-width:2px,color:#fff;
+    classDef monitor fill:#333333,stroke:#ff8c00,stroke-width:2px,color:#fff;
+
+    class AIServicesAccount,AIProject,AIModel,HostedAgent,CapHost ai;
+    class CAE,ACA_MCP,ACA_Apps,UIApp,AgentGateway,MCPPod compute;
+    class StorageAcct,ACR_Foundry,ACR_MCP,AISearch,BingSearch storage;
+    class AppInsights,LogAnalytics,AppInsightsDash monitor;
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="color-box" style="background:#004b87; border: 1px solid #00a4ef;"></div> Azure AI Services & Foundry</div>
+      <div class="legend-item"><div class="color-box" style="background:#1b365d; border: 1px solid #00b294;"></div> Container Apps Compute (K8s / CAE)</div>
+      <div class="legend-item"><div class="color-box" style="background:#2d1b4e; border: 1px solid #9b51e0;"></div> Storage, ACR & Search Data Tier</div>
+      <div class="legend-item"><div class="color-box" style="background:#333333; border: 1px solid #ff8c00;"></div> OpenTelemetry / App Insights Monitoring</div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#161b22',
+        mainBkg: '#161b22',
+        primaryColor: '#1f6feb',
+        primaryTextColor: '#f0f6fc',
+        primaryBorderColor: '#388bfd',
+        lineColor: '#58a6ff',
+        secondaryColor: '#238636',
+        tertiaryColor: '#161b22'
+      }
+    });
+  </script>
+</body>
+</html>

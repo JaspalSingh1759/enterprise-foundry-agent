@@ -1,0 +1,94 @@
+name: AI Platform CI - Build & IaC Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'resources-mcp/**'
+      - 'resources-foundry/**'
+      - '.github/workflows/**'
+      - '*.props'
+      - 'global.json'
+      - 'MafStarterPack.slnx'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Build & Verify .NET 3-Tier Application Code
+  # -------------------------------------------------------------
+  build-dotnet-solution:
+    name: Build 3-Tier Solution (.NET & Aspire)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install .NET Aspire Workload
+        run: dotnet workload install aspire
+
+      - name: Restore NuGet Packages
+        run: dotnet restore MafStarterPack.slnx
+
+      - name: Build All Projects (Release)
+        run: dotnet build MafStarterPack.slnx --no-restore --configuration Release
+
+  # -------------------------------------------------------------
+  # Job 2: Validate Infrastructure as Code (Bicep Linting)
+  # -------------------------------------------------------------
+  validate-bicep-iac:
+    name: Lint & Validate Bicep Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Azure CLI & Bicep
+        run: |
+          az bicep install
+          az bicep version
+
+      - name: Validate MCP Server Bicep Templates
+        run: |
+          echo "Compiling and linting resources-mcp/infra/main.bicep..."
+          az bicep build --file resources-mcp/infra/main.bicep
+
+      - name: Validate AI Foundry Bicep Templates
+        run: |
+          echo "Compiling and linting resources-foundry/infra/main.bicep..."
+          az bicep build --file resources-foundry/infra/main.bicep
+
+  # -------------------------------------------------------------
+  # Job 3: Validate Container Dockerfiles
+  # -------------------------------------------------------------
+  lint-dockerfiles:
+    name: Validate Container Dockerfiles
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Lint McpTodo Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: src/MafStarterPack.McpTodo/Dockerfile
+          failure-threshold: error
+
+      - name: Lint HostedAgent Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: src/MafStarterPack.HostedAgent/Dockerfile
+          failure-threshold: error

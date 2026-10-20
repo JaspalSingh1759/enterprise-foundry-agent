@@ -1,0 +1,150 @@
+name: AI Platform CD - Provision & Deploy to Azure
+
+on:
+  workflow_dispatch: # Manual trigger for safety in initial stages
+    inputs:
+      environment:
+        description: 'Target Deployment Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+permissions:
+  id-token: write  # Required for Azure OIDC Workload Identity Federation
+  contents: read
+
+env:
+  AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'eastus2' }}
+
+jobs:
+  # =============================================================
+  # Stage 1: Deploy MCP Tool Server Tier (Container App)
+  # =============================================================
+  deploy-mcp-server:
+    name: 1. Deploy MCP Server Tier
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    outputs:
+      mcp_fqdn: ${{ steps.mcp-deploy.outputs.MCP_FQDN }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Azure Developer CLI (azd)
+        uses: Azure/setup-azd@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Log in to Azure via OIDC (Zero-Secret Federation)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision & Deploy MCP Server
+        id: mcp-deploy
+        working-directory: resources-mcp
+        run: |
+          azd env new $AZURE_ENV_NAME --no-prompt || true
+          azd env set AZURE_LOCATION $AZURE_LOCATION
+          azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
+          azd up --no-prompt
+
+          # Capture the output FQDN needed for Stage 2
+          MCP_FQDN=$(azd env get-value AZURE_RESOURCE_MCP_TODO_FQDN)
+          echo "MCP_FQDN=$MCP_FQDN" >> $GITHUB_OUTPUT
+          echo "Deployed MCP Server at: $MCP_FQDN"
+
+  # =============================================================
+  # Stage 2: Deploy AI Foundry & Hosted Agent Tier
+  # =============================================================
+  deploy-ai-foundry:
+    name: 2. Deploy AI Foundry & Agent Tier
+    needs: deploy-mcp-server
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    outputs:
+      foundry_endpoint: ${{ steps.foundry-deploy.outputs.FOUNDRY_ENDPOINT }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Azure Developer CLI (azd)
+        uses: Azure/setup-azd@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Log in to Azure via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision Foundry & Deploy Hosted Agent
+        id: foundry-deploy
+        working-directory: resources-foundry
+        env:
+          AZURE_RESOURCE_MCP_TODO_FQDN: ${{ needs.deploy-mcp-server.outputs.mcp_fqdn }}
+        run: |
+          azd env new $AZURE_ENV_NAME --no-prompt || true
+          azd env set AZURE_LOCATION $AZURE_LOCATION
+          azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
+          azd env set AZURE_RESOURCE_MCP_TODO_FQDN $AZURE_RESOURCE_MCP_TODO_FQDN
+          azd up --no-prompt
+
+          FOUNDRY_ENDPOINT=$(azd env get-value AZURE_AI_PROJECT_ENDPOINT)
+          echo "FOUNDRY_ENDPOINT=$FOUNDRY_ENDPOINT" >> $GITHUB_OUTPUT
+          echo "Deployed AI Project Endpoint at: $FOUNDRY_ENDPOINT"
+
+  # =============================================================
+  # Stage 3: Deploy Aspire WebUI & Gateway Apps
+  # =============================================================
+  deploy-aspire-apps:
+    name: 3. Deploy Aspire WebUI & Gateway
+    needs: [deploy-mcp-server, deploy-ai-foundry]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Azure Developer CLI (azd)
+        uses: Azure/setup-azd@v2
+
+      - name: Setup .NET SDK & Aspire Workload
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install Aspire Workload
+        run: dotnet workload install aspire
+
+      - name: Log in to Azure via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Apps via Root azd
+        run: |
+          azd env new $AZURE_ENV_NAME --no-prompt || true
+          azd env set AZURE_LOCATION $AZURE_LOCATION
+          azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
+          azd up --no-prompt
