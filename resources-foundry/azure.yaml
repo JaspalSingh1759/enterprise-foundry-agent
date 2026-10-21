@@ -22,21 +22,20 @@ services:
     language: docker
     docker:
       remoteBuild: true
-    config:
-      container:
-        resources:
-          cpu: "0.25"
-          memory: 0.5Gi
-      deployments:
-        - model:
-            format: OpenAI
-            name: gpt-5-mini
-            version: "2025-08-07"
+    container:
+      resources:
+        cpu: "0.25"
+        memory: 0.5Gi
+    deployments:
+      - model:
+          format: OpenAI
           name: gpt-5-mini
-          sku:
-            capacity: 10
-            name: GlobalStandard
-      startupCommand: dotnet run
+          version: "2025-08-07"
+        name: gpt-5-mini
+        sku:
+          capacity: 10
+          name: GlobalStandard
+    startupCommand: dotnet run
 
 hooks:
   preup:
