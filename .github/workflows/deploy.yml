@@ -87,6 +87,9 @@ jobs:
       - name: Setup Azure Developer CLI (azd)
         uses: Azure/setup-azd@v2
 
+      - name: Install azd extension for Foundry Agents
+        run: azd extension install azure.ai.agents
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
