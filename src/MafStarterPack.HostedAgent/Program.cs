@@ -50,18 +50,26 @@ Console.WriteLine($"Resolved OpenAI Endpoint: {openAiEndpoint}");
 
 var chatClient = new AzureOpenAIClient(openAiEndpoint, credential)
                      .GetResponsesClient()
-                     .AsIChatClient(deploymentName);
+                     .AsIChatClient(deploymentName)
+                     .AsBuilder()
+                     .UseFunctionInvocation()
+                     .Build();
 
-var agent = new ChatClientAgent(
-                    chatClient: chatClient,
-                    name: "todo-agent",
-                    description: "A hosted agent that manages to-do list items.",
-                    instructions: """
-                        You are a helpful assistant for managing a todo list.
-                        You can add, remove, and list tasks in the todo list.
-                        """);
+var agentOptions = new ChatClientAgentOptions
+{
+    Name = "todo-agent",
+    Description = "A hosted agent that manages to-do list items.",
+    Instructions = """
+        You are a helpful assistant for managing a todo list.
+        You can add, remove, and list tasks in the todo list.
+        """,
+    ChatOptions = new ChatOptions
+    {
+        Tools = [ serverTool ]
+    }
+};
 
-agent.Tools.Add(serverTool);
+AIAgent agent = new ChatClientAgent(chatClient, agentOptions);
 
 builder.Services.AddFoundryResponses(agent);
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
