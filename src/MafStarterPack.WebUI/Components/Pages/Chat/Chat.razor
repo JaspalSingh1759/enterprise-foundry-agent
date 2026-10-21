@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using System.ComponentModel
 @inject IChatClient ChatClient
 @inject ILogger<Chat> Logger
@@ -52,19 +52,38 @@
         currentResponseMessage = new ChatMessage(ChatRole.Assistant, [responseText]);
         currentResponseCancellation = new();
         StateHasChanged();
-        await foreach (var update in ChatClient.GetStreamingResponseAsync(messages.Skip(statefulMessageCount), chatOptions, currentResponseCancellation.Token))
+        try
         {
-            messages.AddMessages(update, filter: c => c is not TextContent);
-            responseText.Text += update.Text;
-            chatOptions.ConversationId = update.ConversationId;
+            await foreach (var update in ChatClient.GetStreamingResponseAsync(messages.Skip(statefulMessageCount), chatOptions, currentResponseCancellation.Token))
+            {
+                messages.AddMessages(update, filter: c => c is not TextContent);
+                responseText.Text += update.Text;
+                chatOptions.ConversationId = update.ConversationId;
+                ChatMessageItem.NotifyChanged(currentResponseMessage);
+                StateHasChanged();
+            }
+
+            if (string.IsNullOrWhiteSpace(responseText.Text))
+            {
+                responseText.Text = "Sorry, I received an empty or unhandled response from the agent service. Please verify agent connectivity and logs.";
+                ChatMessageItem.NotifyChanged(currentResponseMessage);
+                StateHasChanged();
+            }
+
+            // Store the final response in the conversation, and begin getting suggestions
+            messages.Add(currentResponseMessage!);
+            statefulMessageCount = chatOptions.ConversationId is not null ? messages.Count : 0;
+            currentResponseMessage = null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting response from agent");
+            responseText.Text = $"Error communicating with agent: {ex.Message}";
             ChatMessageItem.NotifyChanged(currentResponseMessage);
+            messages.Add(currentResponseMessage!);
+            currentResponseMessage = null;
             StateHasChanged();
         }
-
-        // Store the final response in the conversation, and begin getting suggestions
-        messages.Add(currentResponseMessage!);
-        statefulMessageCount = chatOptions.ConversationId is not null ? messages.Count : 0;
-        currentResponseMessage = null;
     }
 
     private void CancelAnyCurrentResponse()

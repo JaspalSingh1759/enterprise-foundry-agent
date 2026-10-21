@@ -15,19 +15,24 @@ var model = config["Foundry:Project:Model"] ?? throw new InvalidOperationExcepti
 var agentName = config["Foundry:Project:Agent:Name"] ?? "todo-agent";
 var agentVersion = config["Foundry:Project:Agent:Version"] ?? "1";
 
-if (builder.Environment.IsDevelopment() == true)
-{
-    var logger = new LoggerFactory().CreateLogger("MafStarterPack.Agent.Program");
-    logger.LogInformation("Using configuration: {config}", config.GetDebugView());
-    logger.LogInformation("Parsed connection string values: Endpoint={endpoint}", endpoint);
-    logger.LogInformation("Parsed connection string values: Model={model}", model);
-    logger.LogInformation("Parsed connection string values: AgentName={agentName}", agentName);
-    logger.LogInformation("Parsed connection string values: AgentVersion={agentVersion}", agentVersion);
-}
+var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("MafStarterPack.Agent.Program");
+logger.LogInformation("Parsed connection string values: Endpoint={endpoint}, Model={model}, AgentName={agentName}, AgentVersion={agentVersion}", endpoint, model, agentName, agentVersion);
 
 builder.AddServiceDefaults();
 
-var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions() { TenantId = config["AZURE_TENANT_ID"] });
+var credentialOptions = new DefaultAzureCredentialOptions
+{
+    TenantId = config["AZURE_TENANT_ID"]
+};
+
+var clientId = config["AZURE_CLIENT_ID"];
+if (!string.IsNullOrWhiteSpace(clientId))
+{
+    logger.LogInformation("Using ManagedIdentityClientId: {clientId}", clientId);
+    credentialOptions.ManagedIdentityClientId = clientId;
+}
+
+var credential = new DefaultAzureCredential(credentialOptions);
 var projectClientOptions = new ProjectOpenAIClientOptions { AgentName = agentName };
 var projectClient = new ProjectOpenAIClient(
     projectEndpoint: new Uri(endpoint),

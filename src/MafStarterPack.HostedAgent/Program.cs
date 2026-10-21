@@ -1,4 +1,4 @@
-﻿using Azure.AI.Projects;
+using Azure.AI.Projects;
 using Azure.Identity;
 
 using Microsoft.Agents.AI;
@@ -28,7 +28,14 @@ AITool serverTool = new HostedMcpServerTool(
     ApprovalMode = HostedMcpServerToolApprovalMode.NeverRequire
 };
 
-var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions() { TenantId = tenantId });
+var credentialOptions = new DefaultAzureCredentialOptions() { TenantId = tenantId };
+var clientId = config["AZURE_CLIENT_ID"];
+if (!string.IsNullOrWhiteSpace(clientId))
+{
+    Console.WriteLine($"Using ManagedIdentityClientId: {clientId}");
+    credentialOptions.ManagedIdentityClientId = clientId;
+}
+var credential = new DefaultAzureCredential(credentialOptions);
 AIAgent agent = new AIProjectClient(new Uri(endpoint), credential)
                     .AsAIAgent(
                         model: deploymentName,

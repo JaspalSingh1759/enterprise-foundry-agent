@@ -30,7 +30,14 @@ var model = config["Foundry:Project:Agent:Model"] ?? "gpt-5-mini";
 var agentName = config["Foundry:Project:Agent:Name"] ?? "todo-agent";
 var agentVersion = config["Foundry:Project:Agent:Version"] ?? "1";
 
-var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions() { TenantId = config["AZURE_TENANT_ID"] });
+var credentialOptions = new DefaultAzureCredentialOptions() { TenantId = config["AZURE_TENANT_ID"] };
+var clientId = config["AZURE_CLIENT_ID"];
+if (!string.IsNullOrWhiteSpace(clientId))
+{
+    Console.WriteLine($"Using ManagedIdentityClientId: {clientId}");
+    credentialOptions.ManagedIdentityClientId = clientId;
+}
+var credential = new DefaultAzureCredential(credentialOptions);
 var projectClient = new AIProjectClient(endpoint: new Uri(projectEndpoint), tokenProvider: credential);
 var agentClient = projectClient.AgentAdministrationClient;
 
