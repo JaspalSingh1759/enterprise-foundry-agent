@@ -160,6 +160,8 @@ jobs:
     needs: [deploy-mcp-server, deploy-ai-foundry]
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'dev' }}
+    env:
+      AZURE_LOCATION: ${{ vars.AZURE_APPS_LOCATION || 'eastus' }}
 
     steps:
       - name: Checkout Code
