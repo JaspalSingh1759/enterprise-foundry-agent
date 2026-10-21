@@ -1,9 +1,12 @@
-using Azure.AI.OpenAI;
+using System.ClientModel.Primitives;
+
 using Azure.Identity;
 
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Foundry.Hosting;
 using Microsoft.Extensions.AI;
+
+using OpenAI;
 
 var builder = AgentHost.CreateBuilder(args);
 
@@ -43,12 +46,17 @@ if (!string.IsNullOrWhiteSpace(clientId))
 }
 var credential = new DefaultAzureCredential(credentialOptions);
 
-// Use the base authority endpoint for AzureOpenAIClient (e.g. https://ai-account-6a3q2sputpvay.cognitiveservices.azure.com/)
+// Use Azure OpenAI v1 API (e.g. https://ai-account-6a3q2sputpvay.cognitiveservices.azure.com/openai/v1/)
+// with the plain OpenAI SDK. Azure.AI.OpenAI prerelease is binary-incompatible with the OpenAI SDK
+// version pulled in by Microsoft.Extensions.AI.OpenAI (MissingMethodException at startup).
 var baseUri = new Uri(endpoint);
-var openAiEndpoint = new Uri($"{baseUri.Scheme}://{baseUri.Authority}/");
+var openAiEndpoint = new Uri($"{baseUri.Scheme}://{baseUri.Authority}/openai/v1/");
 Console.WriteLine($"Resolved OpenAI Endpoint: {openAiEndpoint}");
 
-var chatClient = new AzureOpenAIClient(openAiEndpoint, credential)
+var tokenPolicy = new BearerTokenPolicy(credential, "https://cognitiveservices.azure.com/.default");
+var openAiClient = new OpenAIClient(tokenPolicy, new OpenAIClientOptions { Endpoint = openAiEndpoint });
+
+var chatClient = openAiClient
                      .GetResponsesClient()
                      .AsIChatClient(deploymentName)
                      .AsBuilder()

@@ -13,6 +13,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpClient("agent", client =>
 {
     client.BaseAddress = new Uri("https+http://agent");
+    client.Timeout = TimeSpan.FromMinutes(5);
 });
 
 builder.Services.AddChatClient(sp => new AGUIChatClient(

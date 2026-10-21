@@ -28,8 +28,18 @@ public static class Extensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            // Turn on resilience by default.
+            // LLM/agent calls (hosted agent cold start + model + MCP tool calls) can easily exceed
+            // the default 30s total / 10s per-attempt timeouts, so extend them.
+            http.AddStandardResilienceHandler(options =>
+            {
+                options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(3);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
+                // Sampling duration must be at least double the attempt timeout.
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(6);
+                // Do not retry non-idempotent chat POSTs (would duplicate agent actions).
+                options.Retry.DisableForUnsafeHttpMethods();
+            });
 
             // Turn on service discovery by default
             http.AddServiceDiscovery();
