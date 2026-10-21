@@ -29,9 +29,10 @@ services:
     protocols:
       - protocol: responses
         version: 1.0.0
-    resources:
-      cpu: "0.25"
-      memory: "0.5Gi"
+    container:
+      resources:
+        cpu: "0.25"
+        memory: 0.5Gi
     deployments:
       - model:
           format: OpenAI
@@ -41,13 +42,10 @@ services:
         sku:
           capacity: 10
           name: GlobalStandard
-    environment_variables:
-      - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
-        value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
-      - name: AZURE_RESOURCE_MCP_TODO_FQDN
-        value: ${AZURE_RESOURCE_MCP_TODO_FQDN}
-      - name: AZURE_TENANT_ID
-        value: ${AZURE_TENANT_ID}
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      AZURE_RESOURCE_MCP_TODO_FQDN: ${AZURE_RESOURCE_MCP_TODO_FQDN}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
     startupCommand: dotnet run
 
 hooks:
