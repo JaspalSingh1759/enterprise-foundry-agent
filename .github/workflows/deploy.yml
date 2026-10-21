@@ -124,7 +124,7 @@ jobs:
           azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
           azd env set AZURE_RESOURCE_MCP_TODO_FQDN $AZURE_RESOURCE_MCP_TODO_FQDN
           # Provision infrastructure first to ensure Bicep outputs are exported to azd environment
-          azd provision --no-prompt
+          azd provision --no-prompt --no-state
 
           # Ensure FOUNDRY_PROJECT_ENDPOINT is set in azd environment for azure.ai.agents extension
           FOUNDRY_ENDPOINT=$(azd env get-value AZURE_AI_PROJECT_ENDPOINT || azd env get-value FOUNDRY_PROJECT_ENDPOINT)
@@ -209,4 +209,5 @@ jobs:
           azd env set TODO_AGENT_NAME "${{ needs.deploy-ai-foundry.outputs.todo_agent_name }}"
           azd env set TODO_AGENT_VERSION "${{ needs.deploy-ai-foundry.outputs.todo_agent_version }}"
           azd env set AZURE_RESOURCE_MCP_TODO_FQDN "${{ needs.deploy-mcp-server.outputs.mcp_fqdn }}"
-          azd up --no-prompt
+          azd provision --no-prompt --no-state
+          azd deploy --no-prompt
