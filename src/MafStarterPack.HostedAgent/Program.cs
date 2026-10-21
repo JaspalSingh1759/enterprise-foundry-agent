@@ -12,6 +12,10 @@ Console.WriteLine("Starting Hosted Agent...");
 var config = builder.Configuration;
 
 var endpoint = config["FOUNDRY_PROJECT_ENDPOINT"] ?? throw new InvalidOperationException("FOUNDRY_PROJECT_ENDPOINT environment variable is not set.");
+if (endpoint.Contains(".services.ai.azure.com", StringComparison.OrdinalIgnoreCase))
+{
+    endpoint = endpoint.Replace(".services.ai.azure.com", ".cognitiveservices.azure.com", StringComparison.OrdinalIgnoreCase);
+}
 var deploymentName = config["AZURE_AI_MODEL_DEPLOYMENT_NAME"] ?? throw new InvalidOperationException("AZURE_AI_MODEL_DEPLOYMENT_NAME environment variable is not set.");
 var tenantId = config["AZURE_TENANT_ID"] ?? throw new InvalidOperationException("AZURE_TENANT_ID environment variable is not set.");
 var mcpTodoFqdn = config["AZURE_RESOURCE_MCP_TODO_FQDN"] ?? throw new InvalidOperationException("AZURE_RESOURCE_MCP_TODO_FQDN is not configured");

@@ -11,6 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 
 var endpoint = config["Foundry:Project:Endpoint"] ?? throw new InvalidOperationException("Missing Foundry Endpoint");
+if (endpoint.Contains(".services.ai.azure.com", StringComparison.OrdinalIgnoreCase))
+{
+    endpoint = endpoint.Replace(".services.ai.azure.com", ".cognitiveservices.azure.com", StringComparison.OrdinalIgnoreCase);
+}
 var model = config["Foundry:Project:Model"] ?? throw new InvalidOperationException("Missing Foundry Model");
 var agentName = config["Foundry:Project:Agent:Name"] ?? "todo-agent";
 var agentVersion = config["Foundry:Project:Agent:Version"] ?? "1";

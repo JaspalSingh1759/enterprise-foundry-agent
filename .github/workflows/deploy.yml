@@ -142,6 +142,9 @@ jobs:
           TODO_AGENT_VERSION=$(azd env get-value AGENT_TODO_AGENT_VERSION || echo "")
           TODO_AGENT_ENDPOINT=$(azd env get-value AGENT_TODO_AGENT_ENDPOINT || echo "")
 
+          FOUNDRY_ENDPOINT=$(echo "$FOUNDRY_ENDPOINT" | sed 's/\.services\.ai\.azure\.com/\.cognitiveservices\.azure\.com/g')
+          TODO_AGENT_ENDPOINT=$(echo "$TODO_AGENT_ENDPOINT" | sed 's/\.services\.ai\.azure\.com/\.cognitiveservices\.azure\.com/g')
+
           echo "FOUNDRY_ENDPOINT=$FOUNDRY_ENDPOINT" >> $GITHUB_OUTPUT
           echo "FOUNDRY_RESOURCE_GROUP=$FOUNDRY_RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "FOUNDRY_NAME=$FOUNDRY_NAME" >> $GITHUB_OUTPUT

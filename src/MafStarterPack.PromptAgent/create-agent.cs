@@ -26,6 +26,10 @@ var config = new ConfigurationBuilder()
 
 var mcpTodoFqdn = config["AZURE_RESOURCE_MCP_TODO_FQDN"] ?? throw new InvalidOperationException("MCP TODO FQDN is not configured");
 var projectEndpoint = config["Foundry:Project:Endpoint"] ?? throw new InvalidOperationException("Project endpoint is not configured");
+if (projectEndpoint.Contains(".services.ai.azure.com", StringComparison.OrdinalIgnoreCase))
+{
+    projectEndpoint = projectEndpoint.Replace(".services.ai.azure.com", ".cognitiveservices.azure.com", StringComparison.OrdinalIgnoreCase);
+}
 var model = config["Foundry:Project:Agent:Model"] ?? "gpt-5-mini";
 var agentName = config["Foundry:Project:Agent:Name"] ?? "todo-agent";
 var agentVersion = config["Foundry:Project:Agent:Version"] ?? "1";

@@ -28,7 +28,7 @@ services:
       A hosted agent that manages to-do list items.
     protocols:
       - protocol: responses
-        version: 1.0.0
+        version: 2.0.0
     container:
       resources:
         cpu: "0.25"
