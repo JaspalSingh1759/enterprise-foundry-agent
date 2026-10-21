@@ -11,14 +11,16 @@ Console.WriteLine("Starting Hosted Agent...");
 
 var config = builder.Configuration;
 
-var endpoint = config["FOUNDRY_PROJECT_ENDPOINT"] ?? throw new InvalidOperationException("FOUNDRY_PROJECT_ENDPOINT environment variable is not set.");
+var endpoint = config["FOUNDRY_PROJECT_ENDPOINT"] 
+            ?? config["AZURE_AI_PROJECT_ENDPOINT"]
+            ?? "https://ai-account-6a3q2sputpvay.cognitiveservices.azure.com/api/projects/ai-project-dev";
 if (endpoint.Contains(".services.ai.azure.com", StringComparison.OrdinalIgnoreCase))
 {
     endpoint = endpoint.Replace(".services.ai.azure.com", ".cognitiveservices.azure.com", StringComparison.OrdinalIgnoreCase);
 }
-var deploymentName = config["AZURE_AI_MODEL_DEPLOYMENT_NAME"] ?? throw new InvalidOperationException("AZURE_AI_MODEL_DEPLOYMENT_NAME environment variable is not set.");
-var tenantId = config["AZURE_TENANT_ID"] ?? throw new InvalidOperationException("AZURE_TENANT_ID environment variable is not set.");
-var mcpTodoFqdn = config["AZURE_RESOURCE_MCP_TODO_FQDN"] ?? throw new InvalidOperationException("AZURE_RESOURCE_MCP_TODO_FQDN is not configured");
+var deploymentName = config["AZURE_AI_MODEL_DEPLOYMENT_NAME"] ?? "gpt-5-mini";
+var tenantId = config["AZURE_TENANT_ID"] ?? "a1460d0d-1371-4bcb-9d86-b3f2c535e319";
+var mcpTodoFqdn = config["AZURE_RESOURCE_MCP_TODO_FQDN"] ?? "mcp-todo.bluepond-0c1b28fa.eastus2.azurecontainerapps.io";
 
 Console.WriteLine($"Using Azure OpenAI Endpoint: {endpoint}");
 Console.WriteLine($"Using Azure OpenAI Deployment Name: {deploymentName}");
