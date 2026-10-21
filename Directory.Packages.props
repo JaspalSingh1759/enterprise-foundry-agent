@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageVersion Include="Azure.AI.OpenAI" Version="2.*-*" />
     <PackageVersion Include="Azure.AI.Projects" Version="3.*-*" />
     <PackageVersion Include="Azure.AI.Projects.Agents" Version="3.*-*" />
     <PackageVersion Include="Azure.Identity" Version="1.*" />

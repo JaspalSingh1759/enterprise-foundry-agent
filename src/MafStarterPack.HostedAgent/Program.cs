@@ -1,4 +1,4 @@
-using Azure.AI.Projects;
+using Azure.AI.OpenAI;
 using Azure.Identity;
 
 using Microsoft.Agents.AI;
@@ -13,7 +13,7 @@ var config = builder.Configuration;
 
 var endpoint = config["FOUNDRY_PROJECT_ENDPOINT"] 
             ?? config["AZURE_AI_PROJECT_ENDPOINT"]
-            ?? "https://ai-account-6a3q2sputpvay.cognitiveservices.azure.com/api/projects/ai-project-dev";
+            ?? "https://ai-account-6a3q2sputpvay.cognitiveservices.azure.com/";
 if (endpoint.Contains(".services.ai.azure.com", StringComparison.OrdinalIgnoreCase))
 {
     endpoint = endpoint.Replace(".services.ai.azure.com", ".cognitiveservices.azure.com", StringComparison.OrdinalIgnoreCase);
@@ -42,16 +42,26 @@ if (!string.IsNullOrWhiteSpace(clientId))
     credentialOptions.ManagedIdentityClientId = clientId;
 }
 var credential = new DefaultAzureCredential(credentialOptions);
-AIAgent agent = new AIProjectClient(new Uri(endpoint), credential)
-                    .AsAIAgent(
-                        model: deploymentName,
-                        instructions: """
-                            You are a helpful assistant for managing a todo list.
-                            You can add, remove, and list tasks in the todo list.
-                            """,
-                        name: "todo-agent",
-                        description: "A hosted agent that manages to-do list items.",
-                        tools: [ serverTool ]);
+
+// Use the base authority endpoint for AzureOpenAIClient (e.g. https://ai-account-6a3q2sputpvay.cognitiveservices.azure.com/)
+var baseUri = new Uri(endpoint);
+var openAiEndpoint = new Uri($"{baseUri.Scheme}://{baseUri.Authority}/");
+Console.WriteLine($"Resolved OpenAI Endpoint: {openAiEndpoint}");
+
+var chatClient = new AzureOpenAIClient(openAiEndpoint, credential)
+                     .GetResponsesClient()
+                     .AsIChatClient(deploymentName);
+
+var agent = new ChatClientAgent(
+                    chatClient: chatClient,
+                    name: "todo-agent",
+                    description: "A hosted agent that manages to-do list items.",
+                    instructions: """
+                        You are a helpful assistant for managing a todo list.
+                        You can add, remove, and list tasks in the todo list.
+                        """);
+
+agent.Tools.Add(serverTool);
 
 builder.Services.AddFoundryResponses(agent);
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
