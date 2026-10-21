@@ -39,8 +39,9 @@ var projectClient = new ProjectOpenAIClient(
     tokenProvider: credential,
     options: projectClientOptions);
 
-var chatClient = projectClient.GetResponsesClient()
-                              .AsIChatClient(model);
+var rawChatClient = projectClient.GetResponsesClient()
+                                 .AsIChatClient(model);
+var chatClient = new ExceptionLoggingChatClient(rawChatClient);
 var agentOptions = new ChatClientAgentOptions { Name = agentName };
 var agent = new ChatClientAgent(
     chatClient: chatClient,
@@ -56,6 +57,19 @@ builder.Services.AddAGUIServer();
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
+
+app.MapGet("/health-agent", async () =>
+{
+    try
+    {
+        var response = await chatClient.GetResponseAsync([new ChatMessage(ChatRole.User, "ping")]);
+        return Results.Ok(new { status = "ok", response = response.Text });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(title: "Agent Invocation Error", detail: ex.ToString());
+    }
+});
 
 app.MapOpenAIResponses();
 app.MapOpenAIConversations();
@@ -75,3 +89,61 @@ else
 }
 
 app.Run();
+
+public class ExceptionLoggingChatClient(IChatClient innerClient) : DelegatingChatClient(innerClient)
+{
+    public override async Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> chatMessages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            Console.WriteLine($"[ChatClient] GetResponseAsync invoked with {chatMessages.Count()} messages.");
+            return await base.GetResponseAsync(chatMessages, options, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ChatClient ERROR] GetResponseAsync failed: {ex}");
+            throw;
+        }
+    }
+
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> chatMessages,
+        ChatOptions? options = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"[ChatClient] GetStreamingResponseAsync invoked with {chatMessages.Count()} messages.");
+        IAsyncEnumerator<ChatResponseUpdate>? enumerator = null;
+        try
+        {
+            enumerator = base.GetStreamingResponseAsync(chatMessages, options, cancellationToken).GetAsyncEnumerator(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ChatClient ERROR] Failed initializing stream: {ex}");
+            throw;
+        }
+
+        while (true)
+        {
+            ChatResponseUpdate update;
+            try
+            {
+                if (!await enumerator.MoveNextAsync())
+                {
+                    break;
+                }
+                update = enumerator.Current;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ChatClient ERROR] Failed during streaming update: {ex}");
+                throw;
+            }
+
+            yield return update;
+        }
+    }
+}
