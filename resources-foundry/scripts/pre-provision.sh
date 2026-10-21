@@ -5,6 +5,7 @@ REPOSITORY_ROOT=$(git rev-parse --show-toplevel)
 mkdir -p "$REPOSITORY_ROOT/resources-foundry/src/todo-agent"
 
 cp -R "$REPOSITORY_ROOT/src/MafStarterPack.HostedAgent/." "$REPOSITORY_ROOT/resources-foundry/src/todo-agent"
+rm -f "$REPOSITORY_ROOT/resources-foundry/src/todo-agent/agent.yaml"
 
 cp "$REPOSITORY_ROOT/Directory.Build.props" "$REPOSITORY_ROOT/resources-foundry/src/todo-agent"
 cp "$REPOSITORY_ROOT/Directory.Packages.props" "$REPOSITORY_ROOT/resources-foundry/src/todo-agent"
