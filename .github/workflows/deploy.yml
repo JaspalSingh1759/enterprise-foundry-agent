@@ -160,8 +160,6 @@ jobs:
     needs: [deploy-mcp-server, deploy-ai-foundry]
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'dev' }}
-    env:
-      AZURE_LOCATION: ${{ vars.AZURE_APPS_LOCATION || 'eastus' }}
 
     steps:
       - name: Checkout Code
@@ -206,4 +204,9 @@ jobs:
           azd env set AZURE_LOCATION $AZURE_LOCATION
           azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
+          azd env set FOUNDRY_PROJECT_ENDPOINT "${{ needs.deploy-ai-foundry.outputs.foundry_endpoint }}"
+          azd env set FOUNDRY_MODEL "${{ needs.deploy-ai-foundry.outputs.foundry_model }}"
+          azd env set TODO_AGENT_NAME "${{ needs.deploy-ai-foundry.outputs.todo_agent_name }}"
+          azd env set TODO_AGENT_VERSION "${{ needs.deploy-ai-foundry.outputs.todo_agent_version }}"
+          azd env set AZURE_RESOURCE_MCP_TODO_FQDN "${{ needs.deploy-mcp-server.outputs.mcp_fqdn }}"
           azd up --no-prompt

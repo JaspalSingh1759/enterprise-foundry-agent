@@ -7,9 +7,18 @@ metadata:
   author: Justin Yoo
   description: Provision Microsoft Agent Framework starter pack apps using Azure Developer CLI
 
+infra:
+  provider: bicep
+  path: ./infra
+
 services:  
-  app:
-    project: ./src/MafStarterPack.AppHost/MafStarterPack.AppHost.csproj
+  agent:
+    project: ./src/MafStarterPack.Agent
+    host: containerapp
+    language: dotnet
+
+  webui:
+    project: ./src/MafStarterPack.WebUI
     host: containerapp
     language: dotnet
 
