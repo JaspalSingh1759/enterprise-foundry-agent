@@ -9,7 +9,9 @@ cp -R "$REPOSITORY_ROOT/src/MafStarterPack.HostedAgent/." "$REPOSITORY_ROOT/reso
 cp "$REPOSITORY_ROOT/Directory.Build.props" "$REPOSITORY_ROOT/resources-foundry/src/todo-agent"
 cp "$REPOSITORY_ROOT/Directory.Packages.props" "$REPOSITORY_ROOT/resources-foundry/src/todo-agent"
 
-mcpTodoFqdn=$(dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPack.AppHost" list | \
+mcpTodoFqdn=$(dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPack.AppHost" list 2>/dev/null | \
     sed -n 's/^AZURE_RESOURCE_MCP_TODO_FQDN[[:space:]]*=[[:space:]]*//p')
 
-azd env set AZURE_RESOURCE_MCP_TODO_FQDN $mcpTodoFqdn
+if [ -n "$mcpTodoFqdn" ]; then
+    azd env set AZURE_RESOURCE_MCP_TODO_FQDN "$mcpTodoFqdn"
+fi
