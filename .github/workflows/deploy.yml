@@ -142,9 +142,6 @@ jobs:
           TODO_AGENT_VERSION=$(azd env get-value AGENT_TODO_AGENT_VERSION || echo "")
           TODO_AGENT_ENDPOINT=$(azd env get-value AGENT_TODO_AGENT_ENDPOINT || echo "")
 
-          FOUNDRY_ENDPOINT=$(echo "$FOUNDRY_ENDPOINT" | sed 's/\.services\.ai\.azure\.com/\.cognitiveservices\.azure\.com/g')
-          TODO_AGENT_ENDPOINT=$(echo "$TODO_AGENT_ENDPOINT" | sed 's/\.services\.ai\.azure\.com/\.cognitiveservices\.azure\.com/g')
-
           echo "FOUNDRY_ENDPOINT=$FOUNDRY_ENDPOINT" >> $GITHUB_OUTPUT
           echo "FOUNDRY_RESOURCE_GROUP=$FOUNDRY_RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "FOUNDRY_NAME=$FOUNDRY_NAME" >> $GITHUB_OUTPUT
@@ -154,6 +151,14 @@ jobs:
           echo "TODO_AGENT_VERSION=$TODO_AGENT_VERSION" >> $GITHUB_OUTPUT
           echo "TODO_AGENT_ENDPOINT=$TODO_AGENT_ENDPOINT" >> $GITHUB_OUTPUT
           echo "Deployed AI Project Endpoint at: $FOUNDRY_ENDPOINT"
+
+      - name: Assign RBAC Roles to Agent Gateway Managed Identity
+        run: |
+          SCOPE="/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-$AZURE_ENV_NAME/providers/Microsoft.CognitiveServices/accounts/${{ steps.foundry-deploy.outputs.foundry_name }}"
+          MI_PRINCIPAL_ID=$(az identity show --name id-mcp-todo-6a3q2sputpvay -g "rg-$AZURE_ENV_NAME" --query principalId -o tsv)
+          for ROLE in "Azure AI Developer" "Cognitive Services OpenAI User" "Cognitive Services Contributor" "Azure AI Administrator" "Foundry User" "Foundry Project Runtime User" "Foundry Agent Consumer"; do
+            az role assignment create --assignee-object-id "$MI_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "$ROLE" --scope "$SCOPE" || true
+          done
 
   # =============================================================
   # Stage 3: Deploy Aspire WebUI & Gateway Apps
