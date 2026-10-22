@@ -155,7 +155,11 @@ jobs:
       - name: Assign RBAC Roles to Agent Gateway Managed Identity
         run: |
           SCOPE="/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-$AZURE_ENV_NAME/providers/Microsoft.CognitiveServices/accounts/${{ steps.foundry-deploy.outputs.foundry_name }}"
-          MI_PRINCIPAL_ID=$(az identity show --name id-mcp-todo-6a3q2sputpvay -g "rg-$AZURE_ENV_NAME" --query principalId -o tsv)
+          MI_PRINCIPAL_ID=$(az identity list -g "rg-$AZURE_ENV_NAME" --query "[?starts_with(name, 'id-mcp-todo-')].principalId | [0]" -o tsv)
+          if [ -z "$MI_PRINCIPAL_ID" ]; then
+            echo "::error::Managed identity id-mcp-todo-* not found in rg-$AZURE_ENV_NAME"
+            exit 1
+          fi
           for ROLE in "Azure AI Developer" "Cognitive Services OpenAI User" "Cognitive Services Contributor" "Azure AI Administrator" "Foundry User" "Foundry Project Runtime User" "Foundry Agent Consumer"; do
             az role assignment create --assignee-object-id "$MI_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "$ROLE" --scope "$SCOPE" || true
           done

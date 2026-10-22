@@ -10,8 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 var config = builder.Configuration;
 
-var endpoint = config["Foundry:Project:Endpoint"] ?? throw new InvalidOperationException("Missing Foundry Endpoint");
-var model = config["Foundry:Project:Model"] ?? throw new InvalidOperationException("Missing Foundry Model");
+// AppHost passes "" when a user secret is missing, so treat blank the same as absent.
+var endpoint = config["Foundry:Project:Endpoint"] is { Length: > 0 } e ? e : throw new InvalidOperationException("Missing Foundry Endpoint");
+var model = config["Foundry:Project:Model"] is { Length: > 0 } m ? m : throw new InvalidOperationException("Missing Foundry Model");
 var agentName = config["Foundry:Project:Agent:Name"] ?? "todo-agent";
 var agentVersion = config["Foundry:Project:Agent:Version"] ?? "1";
 

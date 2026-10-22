@@ -19,6 +19,5 @@ fi
 
 foundryEndpoint=$(azd env get-value AZURE_AI_PROJECT_ENDPOINT 2>/dev/null || azd env get-value FOUNDRY_PROJECT_ENDPOINT 2>/dev/null || echo "")
 if [ -n "$foundryEndpoint" ]; then
-    foundryEndpoint=$(echo "$foundryEndpoint" | sed 's/\.services\.ai\.azure\.com/\.cognitiveservices\.azure\.com/g')
     azd env set FOUNDRY_PROJECT_ENDPOINT "$foundryEndpoint"
 fi
