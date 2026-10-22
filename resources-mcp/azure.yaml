@@ -15,7 +15,7 @@ services:
     docker:
       path: ./Dockerfile
       context: .
-      remoteBuild: true
+      remoteBuild: false
 
 hooks:
   predeploy:

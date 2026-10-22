@@ -28,4 +28,25 @@ dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPack.AppHost" set 
 dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPack.AppHost" set "TODO_AGENT_VERSION" $todoAgentVersion
 dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPack.AppHost" set "TODO_AGENT_ENDPOINT" $todoAgentEndpoint
 
+# The hosted agent calls the model as its own agent identity, which needs OpenAI data-plane access.
+openAIUserRoleId="5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
+agentPrincipalId=$(azd ai agent show "$todoAgentName" --output json \
+    | sed -n '/"instance_identity"/,/}/s/.*"principal_id": *"\([^"]*\)".*/\1/p')
+foundryResourceId=$(az cognitiveservices account show \
+    --name "$foundryName" \
+    --resource-group "$foundryResourceGroup" \
+    --query id -o tsv)
+
+if [ -z "$agentPrincipalId" ] || [ -z "$foundryResourceId" ]; then
+    echo "Cannot assign role: agent identity for $todoAgentName or Foundry account $foundryName not found." >&2
+    exit 1
+fi
+
+az role assignment create \
+    --assignee-object-id "$agentPrincipalId" \
+    --assignee-principal-type ServicePrincipal \
+    --role "$openAIUserRoleId" \
+    --scope "$foundryResourceId" \
+    --output none || exit 1
+
 popd

@@ -12,36 +12,33 @@ $foundryName = $secrets["FOUNDRY_NAME"]
 $foundryProjectName = $secrets["FOUNDRY_PROJECT_NAME"]
 $foundryResourceGroup = $secrets["FOUNDRY_RESOURCE_GROUP"]
 
-$userAssignedIdentityName = azd env get-value MANAGED_IDENTITY_NAME
 $resourceGroup = "rg-$(azd env get-value AZURE_ENV_NAME)"
 
-if ([string]::IsNullOrEmpty($userAssignedIdentityName)) {
-    $userAssignedIdentityName = (az identity list --resource-group $resourceGroup --query "[0].name" -o tsv 2>$null)
-}
+# The agent container app runs as the id-mcp-todo-* identity created by resources-mcp.
+# Look it up by prefix: `azd env get-value` prints its error to stdout when a key is missing.
+$principalId = az identity list `
+    --resource-group $resourceGroup `
+    --query "[?starts_with(name, 'id-mcp-todo-')].principalId | [0]" -o tsv
 
 $azureAIUserRoleId = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
 $cognitiveServicesUserRoleId = "a97b65f3-24c7-4388-baec-2e87135dc908"
 
-if (![string]::IsNullOrEmpty($userAssignedIdentityName) -and ![string]::IsNullOrEmpty($foundryName)) {
-    $principalId = az identity show `
-        --name $userAssignedIdentityName `
-        --resource-group $resourceGroup `
-        --query principalId -o tsv 2>$null
+if ([string]::IsNullOrEmpty($principalId) -or [string]::IsNullOrEmpty($foundryName)) {
+    Write-Error "Cannot assign Foundry roles: identity id-mcp-todo-* or FOUNDRY_NAME not found."
+    exit 1
+}
 
-    $foundryResourceId = az cognitiveservices account show `
-        --name $foundryName `
-        --resource-group $foundryResourceGroup `
-        --query id -o tsv 2>$null
+$foundryResourceId = az cognitiveservices account show `
+    --name $foundryName `
+    --resource-group $foundryResourceGroup `
+    --query id -o tsv
 
-    if (![string]::IsNullOrEmpty($principalId) -and ![string]::IsNullOrEmpty($foundryResourceId)) {
-        az role assignment create `
-            --assignee $principalId `
-            --role $azureAIUserRoleId `
-            --scope $foundryResourceId
-
-        az role assignment create `
-            --assignee $principalId `
-            --role $cognitiveServicesUserRoleId `
-            --scope $foundryResourceId
-    }
+foreach ($roleId in @($azureAIUserRoleId, $cognitiveServicesUserRoleId)) {
+    az role assignment create `
+        --assignee-object-id $principalId `
+        --assignee-principal-type ServicePrincipal `
+        --role $roleId `
+        --scope $foundryResourceId `
+        --output none
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 }
