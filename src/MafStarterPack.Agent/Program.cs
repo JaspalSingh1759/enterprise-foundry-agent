@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Azure.AI.Extensions.OpenAI;
 using Azure.Identity;
 
@@ -42,11 +44,19 @@ var projectClient = new ProjectOpenAIClient(
 
 var rawChatClient = projectClient.GetResponsesClient()
                                  .AsIChatClient(model);
-var chatClient = new ExceptionLoggingChatClient(rawChatClient);
+// UseOpenTelemetry emits gen_ai.* spans (model, token usage, finish reason) for every Foundry call.
+// Message content stays out of traces unless EnableSensitiveData is turned on.
+var chatClient = new ExceptionLoggingChatClient(rawChatClient)
+                     .AsBuilder()
+                     .UseOpenTelemetry()
+                     .Build();
 var agentOptions = new ChatClientAgentOptions { Name = agentName };
 var agent = new ChatClientAgent(
-    chatClient: chatClient,
-    options: agentOptions);
+                    chatClient: chatClient,
+                    options: agentOptions)
+                .AsBuilder()
+                .UseOpenTelemetry()
+                .Build();
 
 builder.Services.AddKeyedSingleton<AIAgent>(agentName, agent);
 
@@ -58,6 +68,20 @@ builder.Services.AddAGUIServer();
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
+
+// Return the trace ID so a failing request can be looked up in Application Insights (operation_Id).
+app.Use((context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        if (Activity.Current is { } activity)
+        {
+            context.Response.Headers["x-trace-id"] = activity.TraceId.ToString();
+        }
+        return Task.CompletedTask;
+    });
+    return next(context);
+});
 
 app.MapGet("/health-agent", async () =>
 {
