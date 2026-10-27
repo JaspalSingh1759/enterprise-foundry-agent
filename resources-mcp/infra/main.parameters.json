@@ -19,6 +19,9 @@
     },
     "principalType": {
       "value": "${AZURE_PRINCIPAL_TYPE}"
+    },
+    "mcpApiKey": {
+      "value": "${MCP_API_KEY}"
     }
   }
 }

@@ -49,4 +49,19 @@ az role assignment create \
     --scope "$foundryResourceId" \
     --output none || exit 1
 
+# It also reads the MCP server's API key from Key Vault (created by resources-mcp).
+keyVaultName=$(azd env get-value AZURE_KEY_VAULT_NAME 2>/dev/null) || keyVaultName=""
+if [ -n "$keyVaultName" ]; then
+    keyVaultSecretsUserRoleId="4633458b-17de-408a-b874-0445c86b69e6"
+    keyVaultResourceId=$(az keyvault show --name "$keyVaultName" --query id -o tsv)
+    az role assignment create \
+        --assignee-object-id "$agentPrincipalId" \
+        --assignee-principal-type ServicePrincipal \
+        --role "$keyVaultSecretsUserRoleId" \
+        --scope "$keyVaultResourceId/secrets/mcp-api-key" \
+        --output none || exit 1
+else
+    echo "AZURE_KEY_VAULT_NAME is not set; the agent will call the MCP server without an API key." >&2
+fi
+
 popd

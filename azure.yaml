@@ -21,14 +21,3 @@ services:
     project: ./src/MafStarterPack.WebUI
     host: containerapp
     language: dotnet
-
-hooks:
-  postdeploy:
-    posix:
-      shell: sh
-      run: ./scripts/post-deploy.sh
-      interactive: false
-    windows:
-      shell: pwsh
-      run: ./scripts/post-deploy.ps1
-      interactive: false

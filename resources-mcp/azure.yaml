@@ -18,6 +18,29 @@ services:
       remoteBuild: false
 
 hooks:
+  # azd checks required Bicep inputs (MCP_API_KEY) before preprovision hooks run,
+  # so `azd up` needs the key set in preup. preprovision covers a plain `azd provision`
+  # once the key has been set by an earlier run.
+  preup:
+    posix:
+      shell: sh
+      run: ./scripts/pre-provision.sh
+      interactive: false
+    windows:
+      shell: pwsh
+      run: ./scripts/pre-provision.ps1
+      interactive: false
+
+  preprovision:
+    posix:
+      shell: sh
+      run: ./scripts/pre-provision.sh
+      interactive: false
+    windows:
+      shell: pwsh
+      run: ./scripts/pre-provision.ps1
+      interactive: false
+
   predeploy:
     posix:
       shell: sh

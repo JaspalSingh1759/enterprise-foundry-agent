@@ -1,5 +1,6 @@
 using Azure.AI.Projects;
 using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Foundry.Hosting;
@@ -25,7 +26,7 @@ Console.WriteLine($"Using Model Deployment Name: {deploymentName}");
 Console.WriteLine($"Using Azure Tenant ID: {tenantId}");
 Console.WriteLine($"Using MCP Todo FQDN: {mcpTodoFqdn}");
 
-AITool serverTool = new HostedMcpServerTool(
+var serverTool = new HostedMcpServerTool(
     serverName: "mcp-todo",
     serverAddress: $"https://{mcpTodoFqdn.TrimEnd('/')}/mcp")
 {
@@ -40,6 +41,39 @@ if (!string.IsNullOrWhiteSpace(clientId))
     credentialOptions.ManagedIdentityClientId = clientId;
 }
 var credential = new DefaultAzureCredential(credentialOptions);
+
+// The MCP server requires its API key in the x-api-key header. The key lives in Key Vault and is read
+// with the agent's own identity. On a first deploy that identity is granted Key Vault access only after
+// the agent starts (resources-foundry post-deploy hook), so load the key in the background and keep
+// refreshing it, which also picks up a rotated key without a restart.
+var keyVaultEndpoint = config["AZURE_KEY_VAULT_ENDPOINT"];
+if (string.IsNullOrWhiteSpace(keyVaultEndpoint))
+{
+    Console.WriteLine("AZURE_KEY_VAULT_ENDPOINT is not set; calling the MCP server without an API key.");
+}
+else
+{
+    Console.WriteLine($"Using Key Vault: {keyVaultEndpoint}");
+    var secretClient = new SecretClient(new Uri(keyVaultEndpoint), credential);
+    _ = Task.Run(async () =>
+    {
+        while (true)
+        {
+            var delay = TimeSpan.FromMinutes(10);
+            try
+            {
+                var secret = await secretClient.GetSecretAsync("mcp-api-key");
+                serverTool.Headers = new Dictionary<string, string> { ["x-api-key"] = secret.Value.Value };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not read mcp-api-key from Key Vault, retrying in 30s: {ex.Message}");
+                delay = TimeSpan.FromSeconds(30);
+            }
+            await Task.Delay(delay);
+        }
+    });
+}
 
 AIAgent agent = new AIProjectClient(new Uri(endpoint), credential)
                     .AsAIAgent(

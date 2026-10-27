@@ -31,9 +31,59 @@ resource monitoring 'Microsoft.Insights/components@2020-02-02' existing = {
   name: '${abbrs.insightsComponents}${resourceToken}'
 }
 
-// Reference existing Managed Identity created in Stage 1
-resource mcpTodoIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: '${abbrs.managedIdentityUserAssignedIdentities}mcp-todo-${resourceToken}'
+var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+var azureAIUserRoleId = '53ca6127-db72-4b80-b1b0-d745d6d5456d'
+
+// Each app runs as its own identity, holding only the roles it needs.
+resource agentIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${abbrs.managedIdentityUserAssignedIdentities}agent-${resourceToken}'
+  location: location
+  tags: tags
+}
+
+resource webuiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${abbrs.managedIdentityUserAssignedIdentities}webui-${resourceToken}'
+  location: location
+  tags: tags
+}
+
+// Both apps pull their images from the shared registry
+resource agentAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: containerRegistry
+  name: guid(containerRegistry.id, agentIdentity.id, acrPullRoleId)
+  properties: {
+    principalId: agentIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+  }
+}
+
+resource webuiAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: containerRegistry
+  name: guid(containerRegistry.id, webuiIdentity.id, acrPullRoleId)
+  properties: {
+    principalId: webuiIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+  }
+}
+
+// Only the agent gateway calls Foundry (the project's Responses API, as todo-agent).
+// Azure AI User, shown as "Foundry User" in the portal, covers that. The webui never calls Azure.
+var foundryAccountName = empty(foundryProjectEndpoint) ? '' : split(split(foundryProjectEndpoint, '//')[1], '.')[0]
+
+resource foundryAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (!empty(foundryAccountName)) {
+  name: foundryAccountName
+}
+
+resource agentFoundryUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(foundryAccountName)) {
+  scope: foundryAccount
+  name: guid(resourceGroup().id, foundryAccountName, agentIdentity.id, azureAIUserRoleId)
+  properties: {
+    principalId: agentIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', azureAIUserRoleId)
+  }
 }
 
 // Fetch existing images if they exist
@@ -56,6 +106,9 @@ module webuiFetchLatestImage './modules/fetch-container-image.bicep' = {
 // Deploy Agent Gateway Container App
 module agentApp 'br/public:avm/res/app/container-app:0.8.0' = {
   name: 'agent'
+  dependsOn: [
+    agentAcrPull
+  ]
   params: {
     name: 'agent'
     ingressTargetPort: 8080
@@ -89,7 +142,7 @@ module agentApp 'br/public:avm/res/app/container-app:0.8.0' = {
           }
           {
             name: 'AZURE_CLIENT_ID'
-            value: mcpTodoIdentity.properties.clientId
+            value: agentIdentity.properties.clientId
           }
           {
             name: 'AZURE_TENANT_ID'
@@ -121,13 +174,13 @@ module agentApp 'br/public:avm/res/app/container-app:0.8.0' = {
     managedIdentities: {
       systemAssigned: false
       userAssignedResourceIds: [
-        mcpTodoIdentity.id
+        agentIdentity.id
       ]
     }
     registries: [
       {
         server: containerRegistry.properties.loginServer
-        identity: mcpTodoIdentity.id
+        identity: agentIdentity.id
       }
     ]
     environmentResourceId: containerAppsEnvironment.id
@@ -139,6 +192,9 @@ module agentApp 'br/public:avm/res/app/container-app:0.8.0' = {
 // Deploy WebUI Container App
 module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
   name: 'webui'
+  dependsOn: [
+    webuiAcrPull
+  ]
   params: {
     name: 'webui'
     ingressTargetPort: 8080
@@ -184,13 +240,13 @@ module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
     managedIdentities: {
       systemAssigned: false
       userAssignedResourceIds: [
-        mcpTodoIdentity.id
+        webuiIdentity.id
       ]
     }
     registries: [
       {
         server: containerRegistry.properties.loginServer
-        identity: mcpTodoIdentity.id
+        identity: webuiIdentity.id
       }
     ]
     environmentResourceId: containerAppsEnvironment.id
@@ -202,3 +258,5 @@ module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
 output AGENT_FQDN string = agentApp.outputs.fqdn
 output WEBUI_FQDN string = webuiApp.outputs.fqdn
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
+output AZURE_AGENT_IDENTITY_NAME string = agentIdentity.name
+output AZURE_WEBUI_IDENTITY_NAME string = webuiIdentity.name

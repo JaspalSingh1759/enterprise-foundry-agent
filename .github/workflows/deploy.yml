@@ -31,6 +31,8 @@ jobs:
     environment: ${{ inputs.environment || 'dev' }}
     outputs:
       mcp_fqdn: ${{ steps.mcp-deploy.outputs.MCP_FQDN }}
+      key_vault_name: ${{ steps.mcp-deploy.outputs.KEY_VAULT_NAME }}
+      key_vault_endpoint: ${{ steps.mcp-deploy.outputs.KEY_VAULT_ENDPOINT }}
 
     steps:
       - name: Checkout Code
@@ -67,6 +69,8 @@ jobs:
           # Capture the output FQDN needed for Stage 2
           MCP_FQDN=$(azd env get-value AZURE_RESOURCE_MCP_TODO_FQDN)
           echo "MCP_FQDN=$MCP_FQDN" >> $GITHUB_OUTPUT
+          echo "KEY_VAULT_NAME=$(azd env get-value AZURE_KEY_VAULT_NAME)" >> $GITHUB_OUTPUT
+          echo "KEY_VAULT_ENDPOINT=$(azd env get-value AZURE_KEY_VAULT_ENDPOINT)" >> $GITHUB_OUTPUT
           echo "Deployed MCP Server at: $MCP_FQDN"
 
   # =============================================================
@@ -123,6 +127,8 @@ jobs:
           azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
           azd env set AZURE_RESOURCE_MCP_TODO_FQDN $AZURE_RESOURCE_MCP_TODO_FQDN
+          azd env set AZURE_KEY_VAULT_NAME "${{ needs.deploy-mcp-server.outputs.key_vault_name }}"
+          azd env set AZURE_KEY_VAULT_ENDPOINT "${{ needs.deploy-mcp-server.outputs.key_vault_endpoint }}"
           # Provision infrastructure first to ensure Bicep outputs are exported to azd environment
           azd provision --no-prompt --no-state
 
@@ -152,18 +158,6 @@ jobs:
           echo "TODO_AGENT_ENDPOINT=$TODO_AGENT_ENDPOINT" >> $GITHUB_OUTPUT
           echo "Deployed AI Project Endpoint at: $FOUNDRY_ENDPOINT"
 
-      - name: Assign RBAC Roles to Agent Gateway Managed Identity
-        run: |
-          SCOPE="/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-$AZURE_ENV_NAME/providers/Microsoft.CognitiveServices/accounts/${{ steps.foundry-deploy.outputs.foundry_name }}"
-          MI_PRINCIPAL_ID=$(az identity list -g "rg-$AZURE_ENV_NAME" --query "[?starts_with(name, 'id-mcp-todo-')].principalId | [0]" -o tsv)
-          if [ -z "$MI_PRINCIPAL_ID" ]; then
-            echo "::error::Managed identity id-mcp-todo-* not found in rg-$AZURE_ENV_NAME"
-            exit 1
-          fi
-          # Azure AI User (shown as "Foundry User") and Cognitive Services User, as in scripts/post-deploy.sh
-          for ROLE_ID in 53ca6127-db72-4b80-b1b0-d745d6d5456d a97b65f3-24c7-4388-baec-2e87135dc908; do
-            az role assignment create --assignee-object-id "$MI_PRINCIPAL_ID" --assignee-principal-type ServicePrincipal --role "$ROLE_ID" --scope "$SCOPE" --output none
-          done
 
   # =============================================================
   # Stage 3: Deploy Aspire WebUI & Gateway Apps

@@ -15,3 +15,11 @@ $mcpTodoFqdn = (dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPa
     Where-Object { $_ -match '^AZURE_RESOURCE_MCP_TODO_FQDN\s*=' }) -replace '^[^=]+=\s*', ''
 
 azd env set AZURE_RESOURCE_MCP_TODO_FQDN $mcpTodoFqdn
+
+foreach ($key in @("AZURE_KEY_VAULT_NAME", "AZURE_KEY_VAULT_ENDPOINT")) {
+    $value = (dotnet user-secrets --project "$REPOSITORY_ROOT/src/MafStarterPack.AppHost" list | `
+        Where-Object { $_ -match "^$key\s*=" }) -replace '^[^=]+=\s*', ''
+    if (![string]::IsNullOrEmpty($value)) {
+        azd env set $key $value
+    }
+}

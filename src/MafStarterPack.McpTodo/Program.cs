@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 
@@ -49,6 +51,43 @@ if (app.Environment.IsDevelopment() == false)
 {
     app.UseHttpsRedirection();
 }
+
+// Callers must send the API key from Key Vault (Mcp__ApiKey) in the x-api-key header.
+// Outside Development a missing key fails closed: every /mcp request is rejected.
+var apiKey = app.Configuration["Mcp:ApiKey"];
+if (string.IsNullOrEmpty(apiKey))
+{
+    app.Logger.LogWarning("Mcp:ApiKey is not set. {Behaviour}", app.Environment.IsDevelopment()
+        ? "Development: /mcp accepts requests without a key."
+        : "All /mcp requests will be rejected.");
+}
+var apiKeyBytes = Encoding.UTF8.GetBytes(apiKey ?? string.Empty);
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/mcp"))
+    {
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            if (app.Environment.IsDevelopment() == false)
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return;
+            }
+        }
+        else
+        {
+            var presented = Encoding.UTF8.GetBytes(context.Request.Headers["x-api-key"].ToString());
+            if (CryptographicOperations.FixedTimeEquals(presented, apiKeyBytes) == false)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+        }
+    }
+
+    await next(context);
+});
 
 app.MapMcp("/mcp");
 

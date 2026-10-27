@@ -19,6 +19,10 @@ param principalId string
 @description('Principal type of user or app')
 param principalType string
 
+@secure()
+@description('API key for the mcp-todo server. Set by scripts/pre-provision.sh.')
+param mcpApiKey string
+
 // Tags that should be applied to all resources.
 // 
 // Note that 'azd-service-name' tags should be applied separately to service host resources.
@@ -48,6 +52,7 @@ module resources 'resources.bicep' = {
     mcpTodoExists: mcpTodoExists
     principalId: principalId
     principalType: principalType
+    mcpApiKey: mcpApiKey
   }
 }
 
@@ -58,3 +63,5 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.AZURE_CONTAI
 output AZURE_RESOURCE_MCP_TODO_ID string = resources.outputs.AZURE_RESOURCE_MCP_TODO_ID
 output AZURE_RESOURCE_MCP_TODO_NAME string = resources.outputs.AZURE_RESOURCE_MCP_TODO_NAME
 output AZURE_RESOURCE_MCP_TODO_FQDN string = resources.outputs.AZURE_RESOURCE_MCP_TODO_FQDN
+output AZURE_KEY_VAULT_NAME string = resources.outputs.AZURE_KEY_VAULT_NAME
+output AZURE_KEY_VAULT_ENDPOINT string = resources.outputs.AZURE_KEY_VAULT_ENDPOINT
