@@ -26,6 +26,9 @@
       "principalType": {
         "value": "${AZURE_PRINCIPAL_TYPE}"
       },
+      "pipelinePrincipalId": {
+        "value": "${AZURE_PIPELINE_PRINCIPAL_ID=}"
+      },
       "aiProjectDeploymentsJson": {
         "value": "${AI_PROJECT_DEPLOYMENTS=[]}"
       },

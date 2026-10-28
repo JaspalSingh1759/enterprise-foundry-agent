@@ -7,4 +7,7 @@
     <Project Path="src/MafStarterPack.ServiceDefaults/MafStarterPack.ServiceDefaults.csproj" />
     <Project Path="src/MafStarterPack.WebUI/MafStarterPack.WebUI.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MafStarterPack.AgentEvals/MafStarterPack.AgentEvals.csproj" />
+  </Folder>
 </Solution>

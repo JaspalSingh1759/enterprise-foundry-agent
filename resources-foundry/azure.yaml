@@ -40,6 +40,18 @@ services:
           version: "2025-08-07"
         name: gpt-5-mini
         sku:
+          # Thousands of tokens per minute. Each agent turn makes 2-3 model calls that each resend the
+          # instructions and tool definitions, so 10 was hit by a single evaluation run (HTTP 429).
+          capacity: 100
+          name: GlobalStandard
+      # Judge model for evaluations. Listed second because the first deployment
+      # becomes AZURE_AI_MODEL_DEPLOYMENT_NAME, the agent's own model.
+      - model:
+          format: OpenAI
+          name: gpt-4o
+          version: "2024-11-20"
+        name: gpt-4o
+        sku:
           capacity: 10
           name: GlobalStandard
     env:

@@ -53,6 +53,9 @@ param principalId string
 @description('Principal type of user or app')
 param principalType string
 
+@description('Optional. Object ID of the CI/CD service principal that runs evaluations.')
+param pipelinePrincipalId string = ''
+
 @description('Optional. Name of an existing AI Services account within the resource group. If not provided, a new one will be created.')
 param aiFoundryResourceName string = ''
 
@@ -145,6 +148,7 @@ module aiProject 'core/ai/ai-project.bicep' = if (!useExistingAiProject) {
     aiFoundryProjectName: aiFoundryProjectName
     principalId: principalId
     principalType: principalType
+    pipelinePrincipalId: pipelinePrincipalId
     existingAiAccountName: aiFoundryResourceName
     deployments: aiProjectDeployments
     connections: aiProjectConnections

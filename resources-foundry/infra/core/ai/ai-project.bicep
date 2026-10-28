@@ -19,6 +19,9 @@ param principalId string
 @description('Principal type of user or app')
 param principalType string
 
+@description('Optional. Object ID of the CI/CD service principal, so the pipeline can call the agent and run evaluations.')
+param pipelinePrincipalId string = ''
+
 @description('Optional. Name of an existing AI Services account in the current resource group. If not provided, a new one will be created.')
 param existingAiAccountName string = ''
 
@@ -210,6 +213,19 @@ resource localUserAzureAIUserRoleAssignment 'Microsoft.Authorization/roleAssignm
   properties: {
     principalId: principalId
     principalType: principalType
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
+  }
+}
+
+// Azure AI User for the CI/CD pipeline, so its evaluation stage can call the agent and the judge model.
+// Skipped when the pipeline is also the deployer: the grant above already covers it, and a second
+// assignment of the same role to the same principal at the same scope fails.
+resource pipelineAzureAIUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(pipelinePrincipalId) && pipelinePrincipalId != principalId) {
+  scope: aiAccount::project
+  name: guid(subscription().id, resourceGroup().id, pipelinePrincipalId, '53ca6127-db72-4b80-b1b0-d745d6d5456d')
+  properties: {
+    principalId: pipelinePrincipalId
+    principalType: 'ServicePrincipal'
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
   }
 }
