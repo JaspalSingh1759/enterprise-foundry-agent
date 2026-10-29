@@ -52,7 +52,8 @@ services:
           version: "2024-11-20"
         name: gpt-4o
         sku:
-          capacity: 10
+          # 5 evaluators x 28 cases are scored in parallel; at 10 a third of the judge calls got HTTP 429.
+          capacity: 50
           name: GlobalStandard
     env:
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}

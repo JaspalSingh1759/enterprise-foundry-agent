@@ -32,7 +32,14 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["OTEL_SERVICE_NAME"]))
 }
 if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
-    otel.UseAzureMonitor();
+    // Keep every trace. The default rate-limited sampler (a few traces per second) dropped whole agent
+    // turns during evaluation bursts, including the bulk delete the quality queries exist to catch
+    // (docs/kql/agent-quality.kql). Traffic here is small; revisit if volume grows.
+    otel.UseAzureMonitor(o =>
+    {
+        o.TracesPerSecond = null;
+        o.SamplingRatio = 1.0F;
+    });
 }
 
 builder.Services.AddMcpServer()

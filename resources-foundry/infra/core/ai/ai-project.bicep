@@ -230,6 +230,41 @@ resource pipelineAzureAIUserRoleAssignment 'Microsoft.Authorization/roleAssignme
   }
 }
 
+// Cognitive Services OpenAI User on the account, for whoever runs evaluations. Foundry's judge evaluators
+// call the judge model deployment as the identity that started the run, and Azure AI User on the project
+// doesn't include the account's OpenAI deployments/chat/completions data action.
+resource localUserOpenAIUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: aiAccount
+  name: guid(subscription().id, resourceGroup().id, principalId, '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  properties: {
+    principalId: principalId
+    principalType: principalType
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  }
+}
+
+// The evaluation service also calls the judge model as the project's own managed identity for part of the
+// rows, so without this grant about a third of the judge scores fail with "Principal does not have access".
+resource projectOpenAIUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: aiAccount
+  name: guid(subscription().id, resourceGroup().id, aiAccount::project.id, '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  properties: {
+    principalId: aiAccount::project.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  }
+}
+
+resource pipelineOpenAIUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(pipelinePrincipalId) && pipelinePrincipalId != principalId) {
+  scope: aiAccount
+  name: guid(subscription().id, resourceGroup().id, pipelinePrincipalId, '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  properties: {
+    principalId: pipelinePrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  }
+}
+
 
 // All connections are now created directly within their respective resource modules
 // using the centralized ./connection.bicep module

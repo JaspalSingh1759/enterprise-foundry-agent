@@ -1,0 +1,45 @@
+datasets:
+  - name: todo-agent-turn-tests
+    file: ./datasets/todo-agent-turn-tests.jsonl
+    tags:
+      evaluation_level: turn
+evals:
+  - name: todo-agent-quality
+    description: Basic quality evaluation for todo-agent
+    dataset: todo-agent-turn-tests
+    evaluationLevel: turn
+    evaluators:
+      - evaluator: builtin.intent_resolution
+        initializationParameters:
+          model: gpt-4o
+      - evaluator: builtin.task_adherence
+        initializationParameters:
+          model: gpt-4o
+      # No tool_call_accuracy: a hosted agent's MCP calls happen inside its container, so the eval only
+      # sees the final reply (tool_calls and tool_definitions are empty). Tool correctness is covered by
+      # the state checks in tests/MafStarterPack.AgentEvals instead.
+      # Our own policy rubric (evaluators/todo-agent-policy.json), generated from evals/agent-instructions.md and
+      # reviewed by hand. The built-in judges can't see a hosted agent's instructions, so they grade against
+      # generic helpfulness; builtin.task_completion failed correct behaviour such as asking before a bulk delete.
+      - evaluator: todo-agent-policy
+        initializationParameters:
+          model: gpt-4o
+      - evaluator: builtin.relevance
+        initializationParameters:
+          model: gpt-4o
+      - evaluator: builtin.violence
+        initializationParameters:
+          model: gpt-4o
+    target:
+      type: agent
+      name: todo-agent
+evaluators:
+  - name: todo-agent-policy
+    source: ./evaluators/todo-agent-policy.json
+    displayName: todo-agent-policy
+    categories:
+      - quality
+      - agents
+    supportedEvaluationLevels:
+      - turn
+      - conversation

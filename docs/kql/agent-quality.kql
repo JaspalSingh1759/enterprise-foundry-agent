@@ -1,0 +1,130 @@
+// Agent quality signals from traces (Day 5, Part C).
+// Run in App Insights appi-<token> > Logs. No expected answers and no model calls: every signal
+// comes from the MCP server's own spans, so it works for every request the agent handles.
+//
+// Why the MCP server and not the agent: since App Insights was recreated, Foundry's runtime spans
+// (cloud_RoleName "responsesapi") no longer arrive here, and the hosted agent exports none of its own.
+// The MCP server sees every tool call, and Foundry passes its trace context through, so all tool
+// calls of one agent turn share an operation_Id.
+//
+// Every query repeats the same two building blocks so it can stand alone (Day 6 turns each one
+// into an alert rule):
+//   agentOps  - turns that came from the agent: the MCP HTTP request arrived with a parent trace
+//               from Foundry. Direct calls from the state-check tests and seed-todo-list.sh have
+//               no parent, so they are left out.
+//   weight    - the exporter keeps only some traces under load (microsoft.sample_rate 50 means
+//               1 in 2). itemCount is not adjusted, so counts are weighted by 100 / sample_rate.
+//               Sampling keeps or drops whole traces, so per-turn checks stay correct.
+
+
+// ===== Q1. Tool calls and "not found" rate per tool =====
+// A rising not-found rate means the agent is guessing IDs or the user's words don't match items.
+let window = 1d;
+let agentOps = requests
+    | where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "POST /mcp"
+    | where operation_ParentId != operation_Id
+    | distinct operation_Id;
+let notFound = traces
+    | where timestamp > ago(window) and cloud_RoleName == "mcp-todo"
+    | where customDimensions.CategoryName == "MafStarterPack.McpTodo.TodoTool" and severityLevel == 2
+    | distinct callId = operation_ParentId;
+requests
+| where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "tools/call"
+| where operation_Id in (agentOps)
+| extend tool = tostring(customDimensions["gen_ai.tool.name"]),
+         weight = 100.0 / todouble(coalesce(tostring(customDimensions["microsoft.sample_rate"]), "100"))
+| summarize calls = round(sum(weight)),
+            notFound = round(sumif(weight, id in (notFound))),
+            failed = round(sumif(weight, success == false))
+            by tool
+| extend notFoundPct = round(100.0 * notFound / calls, 1)
+| order by calls desc
+
+
+// ===== Q2. Tool calls per turn: loops and runaway turns =====
+// A normal turn makes 1-3 tool calls. More than 6 suggests the agent is looping or retrying.
+let window = 1d;
+let agentOps = requests
+    | where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "POST /mcp"
+    | where operation_ParentId != operation_Id
+    | distinct operation_Id;
+requests
+| where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "tools/call"
+| where operation_Id in (agentOps)
+| summarize toolCalls = count(),
+            sequence = strcat_array(make_list(tostring(customDimensions["gen_ai.tool.name"])), " > ")
+            by operation_Id
+| summarize turns = count(),
+            p50 = percentile(toolCalls, 50), p95 = percentile(toolCalls, 95), max = max(toolCalls),
+            over6 = countif(toolCalls > 6),
+            worst = make_list_if(pack("operation_Id", operation_Id, "sequence", sequence), toolCalls > 6, 5)
+
+
+// ===== Q3. Changes made without listing first: the agent guessed an ID =====
+// The tool descriptions say "ALWAYS call get_todo_items first". A delete/complete/update with no
+// get_todo_items earlier in the same turn means the ID came from memory or a guess.
+let window = 1d;
+let agentOps = requests
+    | where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "POST /mcp"
+    | where operation_ParentId != operation_Id
+    | distinct operation_Id;
+requests
+| where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "tools/call"
+| where operation_Id in (agentOps)
+| extend tool = tostring(customDimensions["gen_ai.tool.name"])
+| summarize firstList   = minif(timestamp, tool == "get_todo_items"),
+            firstChange = minif(timestamp, tool in ("delete_todo_item", "complete_todo_item", "update_todo_item")),
+            sequence = strcat_array(make_list(tool), " > ")
+            by operation_Id
+| where isnotempty(firstChange)
+| extend guessed = isempty(firstList) or firstChange < firstList
+| summarize turnsWithChanges = count(), guessed = countif(guessed),
+            examples = make_list_if(pack("operation_Id", operation_Id, "sequence", sequence), guessed, 5)
+| extend guessedPct = round(100.0 * guessed / turnsWithChanges, 1)
+
+
+// ===== Q4. Bulk destructive turns: several deletes in one turn =====
+// The policy says destructive bulk actions need the user's confirmation first. More than 2 deletes
+// (or renames) in one turn is worth a look: either the user confirmed in an earlier turn, or the
+// agent skipped confirmation (eval case #7 deleted 4 items in one turn).
+let window = 1d;
+let agentOps = requests
+    | where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "POST /mcp"
+    | where operation_ParentId != operation_Id
+    | distinct operation_Id;
+requests
+| where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "tools/call"
+| where operation_Id in (agentOps)
+| extend tool = tostring(customDimensions["gen_ai.tool.name"])
+| summarize deletes = countif(tool == "delete_todo_item"),
+            updates = countif(tool == "update_todo_item"),
+            at = min(timestamp),
+            sequence = strcat_array(make_list(tool), " > ")
+            by operation_Id
+| where deletes > 2 or updates > 2
+| order by at desc
+
+
+// ===== Q5. Tool health: errors and latency =====
+// Not about the agent's judgement but about whether its tools work. A tool that fails or slows
+// down makes the agent look wrong even when its reasoning is fine.
+let window = 1d;
+requests
+| where timestamp > ago(window) and cloud_RoleName == "mcp-todo" and name startswith "tools/call"
+| extend weight = 100.0 / todouble(coalesce(tostring(customDimensions["microsoft.sample_rate"]), "100"))
+| summarize calls = round(sum(weight)), failed = round(sumif(weight, success == false)),
+            p50ms = round(percentile(duration, 50), 1), p95ms = round(percentile(duration, 95), 1)
+            by tool = tostring(customDimensions["gen_ai.tool.name"])
+| order by calls desc
+
+
+// ===== Q6. Telemetry health: how much are we not seeing? =====
+// Run this before trusting Q1-Q5. If most spans arrive at a low sample rate, rare events like a
+// single bulk delete can be missed entirely. Also catches a service that stopped sending.
+let window = 1d;
+union requests, dependencies
+| where timestamp > ago(window)
+| extend rate = todouble(coalesce(tostring(customDimensions["microsoft.sample_rate"]), "100"))
+| summarize spans = count(), keptPct = round(100.0 * count() / sum(100.0 / rate), 1), lastSeen = max(timestamp)
+            by cloud_RoleName
+| order by cloud_RoleName asc
