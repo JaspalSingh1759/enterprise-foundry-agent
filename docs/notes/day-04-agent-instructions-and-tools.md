@@ -114,10 +114,10 @@ Here is the full chain for one chat message:
 
 **2. It sends the *server*, not the tool descriptions.** Our code only says *"here's an MCP server: its URL, its key header, and which tools are allowed"*. The descriptions live in the **MCP server** (`TodoTool.cs`), and Foundry fetches them at run time (step ①). That means there are two separate deployments:
 
-| You change... | Lives in | Redeploy | Picked up |
-|---|---|---|---|
-| Tool names, descriptions, parameters | MCP server (`TodoTool.cs`) | `resources-mcp` (stage 1) | **Not immediately:** when Foundry's cached tool list refreshes (we saw ~10–15 min) |
-| Instructions, allowed tools, approval mode | Hosted agent (`HostedAgent/Program.cs`) | `resources-foundry` (stage 2) | When the new agent version starts |
+| You change...                              | Lives in                                | Redeploy                      | Picked up                                                                          |
+| ------------------------------------------ | --------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| Tool names, descriptions, parameters       | MCP server (`TodoTool.cs`)              | `resources-mcp` (stage 1)     | **Not immediately:** when Foundry's cached tool list refreshes (we saw ~10–15 min) |
+| Instructions, allowed tools, approval mode | Hosted agent (`HostedAgent/Program.cs`) | `resources-foundry` (stage 2) | When the new agent version starts                                                  |
 
 So a change touching both should be **released and tested together**.
 
@@ -139,12 +139,12 @@ So a change touching both should be **released and tested together**.
 
 This repo also has a **prompt agent** script ([PromptAgent/create-agent.cs](../../src/MafStarterPack.PromptAgent/create-agent.cs)). It stores the instructions and the MCP tool **inside Foundry's agent definition**, with no container. The caller sends only "use agent X" plus the message, and Foundry adds the stored instructions and tools itself.
 
-| | Hosted agent (ours) | Prompt agent |
-|---|---|---|
-| Who adds instructions + MCP server to each request | Our container's code | Foundry, from the stored definition |
-| Shown on the agent's portal page | No | Yes, under Tools |
-| Where tool descriptions come from | The MCP server, fetched at run time | The MCP server, fetched at run time |
-| What the model receives on each call | Instructions + tool definitions + conversation | Same |
+|                                                    | Hosted agent (ours)                            | Prompt agent                        |
+| -------------------------------------------------- | ---------------------------------------------- | ----------------------------------- |
+| Who adds instructions + MCP server to each request | Our container's code                           | Foundry, from the stored definition |
+| Shown on the agent's portal page                   | No                                             | Yes, under Tools                    |
+| Where tool descriptions come from                  | The MCP server, fetched at run time            | The MCP server, fetched at run time |
+| What the model receives on each call               | Instructions + tool definitions + conversation | Same                                |
 
 Either way, the model sees the same kind of input. Only **who supplies it** differs.
 
@@ -152,13 +152,13 @@ Either way, the model sees the same kind of input. Only **who supplies it** diff
 
 ### What goes wrong when the text is vague
 
-| Problem in the text | What the model does |
-|---|---|
-| Two tools sound alike ("Completes a to-do item" / "Deletes a to-do item") | Picks one at random for "I'm done with buy milk" |
-| No "when to use" | Guesses from the name alone |
-| No "get the ID first" rule | Guesses an ID like `1`, or reuses an old one |
-| Instructions mention things no tool does, or miss things a tool does | Claims abilities it doesn't have, or never uses a tool |
-| Error results without a next step | Gives up, or claims success anyway |
+| Problem in the text                                                       | What the model does                                    |
+| ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Two tools sound alike ("Completes a to-do item" / "Deletes a to-do item") | Picks one at random for "I'm done with buy milk"       |
+| No "when to use"                                                          | Guesses from the name alone                            |
+| No "get the ID first" rule                                                | Guesses an ID like `1`, or reuses an old one           |
+| Instructions mention things no tool does, or miss things a tool does      | Claims abilities it doesn't have, or never uses a tool |
+| Error results without a next step                                         | Gives up, or claims success anyway                     |
 
 ---
 
@@ -182,14 +182,14 @@ What was wrong:
 
 In [HostedAgent/Program.cs](../../src/MafStarterPack.HostedAgent/Program.cs). The structure is what matters; each section fixes one of the problems above:
 
-| Section | What it says | Why |
-|---|---|---|
-| **Role** | Manage the to-do list; lists all five abilities | The model knows its whole job, matching the real tools |
-| **Choosing a tool** | A mapping from the user's words to tools: "done / finished" → complete; "remove / delete" → delete; if unclear, ask | Removes the done-vs-delete guess |
-| **Working with IDs** | Always call `get_todo_items` first; match by text; if several match, list them and ask | Stops guessed IDs and silent wrong picks |
-| **Safety** | Only delete what was clearly asked; confirm when several items or "everything" could match; never claim success unless the tool succeeded | Prevents the dangerous mistakes |
-| **Replies** | One or two sentences, plus the affected items with IDs | Consistent, checkable answers |
-| **Scope** | Only the to-do list; politely decline anything else | Keeps the agent on task, and makes prompt injection harder |
+| Section              | What it says                                                                                                                              | Why                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Role**             | Manage the to-do list; lists all five abilities                                                                                           | The model knows its whole job, matching the real tools     |
+| **Choosing a tool**  | A mapping from the user's words to tools: "done / finished" → complete; "remove / delete" → delete; if unclear, ask                       | Removes the done-vs-delete guess                           |
+| **Working with IDs** | Always call `get_todo_items` first; match by text; if several match, list them and ask                                                    | Stops guessed IDs and silent wrong picks                   |
+| **Safety**           | Only delete what was clearly asked; confirm when several items or "everything" could match; never claim success unless the tool succeeded | Prevents the dangerous mistakes                            |
+| **Replies**          | One or two sentences, plus the affected items with IDs                                                                                    | Consistent, checkable answers                              |
+| **Scope**            | Only the to-do list; politely decline anything else                                                                                       | Keeps the agent on task, and makes prompt injection harder |
 
 **Tips for writing instructions:**
 - **Be specific, not polite.** "Before updating, completing or deleting, call get_todo_items" beats "Please be careful with IDs".
@@ -230,23 +230,23 @@ The "when not to use" line matters most. It tells the model the **difference** b
 
 ### The new descriptions, side by side
 
-| Tool | New description, short version | Annotations |
-|---|---|---|
-| `add_todo_item` | Adds one new item. For "add / remember / note down". One call per item. Not for changing an item. | not read-only, not destructive |
-| `get_todo_items` | Lists all items with ID, text, done. **Always call first before changing an item. Never guess an ID.** | **read-only**, idempotent |
-| `update_todo_item` | Replaces an item's text. For "rename / reword / correct". Not for done or delete. | **destructive** (overwrites text), idempotent |
-| `complete_todo_item` | Marks an item done; **it stays on the list**. For "did / finished / ticked off". Not for removing. | not destructive, idempotent |
-| `delete_todo_item` | **Permanently** removes an item. Only on an explicit "remove / delete". Not for finished tasks. | **destructive**, idempotent |
+| Tool                 | New description, short version                                                                         | Annotations                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| `add_todo_item`      | Adds one new item. For "add / remember / note down". One call per item. Not for changing an item.      | not read-only, not destructive                |
+| `get_todo_items`     | Lists all items with ID, text, done. **Always call first before changing an item. Never guess an ID.** | **read-only**, idempotent                     |
+| `update_todo_item`   | Replaces an item's text. For "rename / reword / correct". Not for done or delete.                      | **destructive** (overwrites text), idempotent |
+| `complete_todo_item` | Marks an item done; **it stays on the list**. For "did / finished / ticked off". Not for removing.     | not destructive, idempotent                   |
+| `delete_todo_item`   | **Permanently** removes an item. Only on an explicit "remove / delete". Not for finished tasks.        | **destructive**, idempotent                   |
 
 ### Parameter descriptions
 
 The model fills in parameters from their descriptions too:
 
-| Parameter | Before | After |
-|---|---|---|
-| `id` | "The to-do item ID" | "ID of the item to delete, **taken from get_todo_items**." |
-| `todoItemText` (add) | "The to-do item text" | "The task text, **exactly as the user wants it written**, e.g. "buy milk". **Must not be empty.**" |
-| `todoItemText` (update) | "The to-do item text" | "The **complete new text** for the item, **replacing the old text**." |
+| Parameter               | Before                | After                                                                                              |
+| ----------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
+| `id`                    | "The to-do item ID"   | "ID of the item to delete, **taken from get_todo_items**."                                         |
+| `todoItemText` (add)    | "The to-do item text" | "The task text, **exactly as the user wants it written**, e.g. "buy milk". **Must not be empty.**" |
+| `todoItemText` (update) | "The to-do item text" | "The **complete new text** for the item, **replacing the old text**."                              |
 
 "Replacing the old text" prevents a subtle mistake: the model sending only the *changed words* instead of the full new text.
 
@@ -254,23 +254,23 @@ The model fills in parameters from their descriptions too:
 
 `ReadOnly`, `Destructive`, `Idempotent` and `OpenWorld` are standard **MCP tool annotations**, set on `[McpServerTool]`. They're labels about a tool's behaviour:
 
-| Annotation | Means | Used for |
-|---|---|---|
-| `ReadOnly = true` | Changes nothing | Safe to call freely, or to retry |
-| `Destructive = true` | Can remove or overwrite data | Clients and platforms can require approval for these automatically |
-| `Idempotent = true` | Calling twice with the same input has the same effect as once | Safe to retry after a timeout |
-| `OpenWorld = false` | Only touches this server's own data, not the outside world | Risk assessment |
+| Annotation           | Means                                                         | Used for                                                           |
+| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `ReadOnly = true`    | Changes nothing                                               | Safe to call freely, or to retry                                   |
+| `Destructive = true` | Can remove or overwrite data                                  | Clients and platforms can require approval for these automatically |
+| `Idempotent = true`  | Calling twice with the same input has the same effect as once | Safe to retry after a timeout                                      |
+| `OpenWorld = false`  | Only touches this server's own data, not the outside world    | Risk assessment                                                    |
 
 They're **hints, not enforcement.** The MCP server must still validate everything itself.
 
 ### Results and error messages
 
-| Situation | Before | After |
-|---|---|---|
-| Item not found | "Todo item with ID '9' not found." | "Not deleted: there is no item with ID 9. **Call get_todo_items to see the current IDs.**" |
-| Empty text | Accepted an empty item | "Not added: the task text is empty. **Ask the user what the task should say.**" |
-| Successful update | "Todo item updated: '2' with text: 'MafStarterPack.McpTodo.TodoItem'" ❌ | "Updated item 2: the text is now 'buy oat milk'." |
-| Successful delete | "Todo item deleted: '4'" | "Deleted item 4: 'buy milk'." |
+| Situation         | Before                                                                   | After                                                                                      |
+| ----------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| Item not found    | "Todo item with ID '9' not found."                                       | "Not deleted: there is no item with ID 9. **Call get_todo_items to see the current IDs.**" |
+| Empty text        | Accepted an empty item                                                   | "Not added: the task text is empty. **Ask the user what the task should say.**"            |
+| Successful update | "Todo item updated: '2' with text: 'MafStarterPack.McpTodo.TodoItem'" ❌ | "Updated item 2: the text is now 'buy oat milk'."                                          |
+| Successful delete | "Todo item deleted: '4'"                                                 | "Deleted item 4: 'buy milk'."                                                              |
 
 The update message was a **real bug**: it printed the C# class name instead of the new text. The model read that, and could have told the user something strange. Including the item's **text** in every result also lets the model double-check that it acted on the right item.
 
@@ -294,10 +294,10 @@ If someone adds a new tool to the MCP server later (say `delete_all_items`), the
 
 `HostedMcpServerTool.ApprovalMode` has three settings:
 
-| Mode | Effect |
-|---|---|
-| `NeverRequire` | Tools run straight away (what we use) |
-| `AlwaysRequire` | Every tool call pauses until a person approves it |
+| Mode                                           | Effect                                               |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| `NeverRequire`                                 | Tools run straight away (what we use)                |
+| `AlwaysRequire`                                | Every tool call pauses until a person approves it    |
 | `RequireSpecific(always: [...], never: [...])` | Only the listed tools pause, e.g. `delete_todo_item` |
 
 With approval required, Foundry doesn't run the tool. It sends back an **approval request**, and the *client* must show it to the user and send their answer back. Our gateway and web UI don't support that yet, so a delete would simply never finish.
@@ -314,12 +314,12 @@ The model *should* never send empty text, but the tool **checks anyway** and ret
 
 Instructions and descriptions **are code** from a DevOps point of view: they change behaviour in production. Treat them that way:
 
-| Practice | In this project |
-|---|---|
-| Stored in git, changed by pull request | Instructions in `HostedAgent/Program.cs`, descriptions in `TodoTool.cs` |
-| Each deploy is versioned | Each `azd deploy` creates a new Foundry agent version, so you can roll back to the previous version |
-| Tested before release | The test prompts in Part 7 (later: an automated evaluation gate, Day 5 of the plan) |
-| Watched after release | The tool-mix and tool-failure queries in Part 6 |
+| Practice                               | In this project                                                                                     |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Stored in git, changed by pull request | Instructions in `HostedAgent/Program.cs`, descriptions in `TodoTool.cs`                             |
+| Each deploy is versioned               | Each `azd deploy` creates a new Foundry agent version, so you can roll back to the previous version |
+| Tested before release                  | The test prompts in Part 7 (later: an automated evaluation gate, Day 5 of the plan)                 |
+| Watched after release                  | The tool-mix and tool-failure queries in Part 6                                                     |
 
 **Watch out:** the instructions live in the **hosted agent**, but the descriptions live in the **MCP server**. They're deployed separately (stage 2 vs stage 1), so a change to both should be released together and tested together.
 
@@ -328,6 +328,8 @@ Instructions and descriptions **are code** from a DevOps point of view: they cha
 ## Part 6: Debugging: did the agent call the right tool?
 
 Never trust the agent's **reply** to tell you what it did; check what was **actually executed**. Foundry records every tool call in the traces, with its arguments and result.
+
+> ⚠️ **Update (Day 5, Part C):** since App Insights was recreated on 2026-10-26, Foundry's runtime spans (`cloud_RoleName == "responsesapi"`, `execute_tool`) no longer arrive, so the queries below return nothing for now. The MCP server's own spans (`tools/call <tool>`, grouped per turn by `operation_Id`) show the same tool calls, without arguments. See [day-05-quality-signals.md](day-05-quality-signals.md) Part 2.
 
 ### The method, step by step
 
@@ -346,14 +348,14 @@ dependencies
 
 **Step 3: Compare, and name the kind of mistake.**
 
-| You see | Kind of mistake | Usual cause | Usual fix |
-|---|---|---|---|
-| A different tool than expected | **Wrong tool** | Overlapping or vague descriptions | Add "when not to use" lines |
-| Right tool, wrong ID or text | **Wrong arguments** | Didn't look the item up first; ambiguous request | "Call get_todo_items first"; "ask if several match" |
-| No tool call, but the reply claims success | **Made-up action** | Model answered from memory | "Never say an action happened unless the tool reported success" |
-| The same tool called again and again | **Loop** | A result the model doesn't understand | Clearer result and error text |
-| Right tool, but the result is an error | **Tool failure** | Bug or bad input in the tool | Fix the tool; clearer error message |
-| Right calls, wrong final reply | **Misreported result** | Model misread the result | Include the item's text in results |
+| You see                                    | Kind of mistake        | Usual cause                                      | Usual fix                                                       |
+| ------------------------------------------ | ---------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
+| A different tool than expected             | **Wrong tool**         | Overlapping or vague descriptions                | Add "when not to use" lines                                     |
+| Right tool, wrong ID or text               | **Wrong arguments**    | Didn't look the item up first; ambiguous request | "Call get_todo_items first"; "ask if several match"             |
+| No tool call, but the reply claims success | **Made-up action**     | Model answered from memory                       | "Never say an action happened unless the tool reported success" |
+| The same tool called again and again       | **Loop**               | A result the model doesn't understand            | Clearer result and error text                                   |
+| Right tool, but the result is an error     | **Tool failure**       | Bug or bad input in the tool                     | Fix the tool; clearer error message                             |
+| Right calls, wrong final reply             | **Misreported result** | Model misread the result                         | Include the item's text in results                              |
 
 The **made-up action** is the most dangerous, because users trust the reply. Only the trace can catch it.
 
@@ -410,15 +412,15 @@ What to alert on (see Day 2 of the plan, and the alerts discussion):
 
 A small test set. Each prompt has an **expected** tool sequence to compare against the trace.
 
-| # | Prompt | Expected tool calls | Tests |
-|---|---|---|---|
-| 1 | "Add buy milk and call the bank" | `add_todo_item` × 2 | One call per item |
-| 2 | "I finished buy milk" | `get_todo_items` → `complete_todo_item(<buy milk>)` | Done vs delete |
-| 3 | "Remove the call the bank task" | `get_todo_items` → `delete_todo_item(<call the bank>)` | Explicit delete |
-| 4 | "Rename buy milk to buy oat milk" | `get_todo_items` → `update_todo_item(<id>, "buy oat milk")` | Full new text; the update bug fix |
-| 5 | Two items called "interview prep", then "delete interview prep" | `get_todo_items`, then **a question**, no delete | Ambiguity → ask |
-| 6 | "Delete item 99" | `get_todo_items` and/or `delete_todo_item(99)` → "Not deleted…" → honest reply | Error handling, no made-up success |
-| 7 | "What's the weather?" | No tool call; politely declines | Scope |
+| #   | Prompt                                                          | Expected tool calls                                                            | Tests                              |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------- |
+| 1   | "Add buy milk and call the bank"                                | `add_todo_item` × 2                                                            | One call per item                  |
+| 2   | "I finished buy milk"                                           | `get_todo_items` → `complete_todo_item(<buy milk>)`                            | Done vs delete                     |
+| 3   | "Remove the call the bank task"                                 | `get_todo_items` → `delete_todo_item(<call the bank>)`                         | Explicit delete                    |
+| 4   | "Rename buy milk to buy oat milk"                               | `get_todo_items` → `update_todo_item(<id>, "buy oat milk")`                    | Full new text; the update bug fix  |
+| 5   | Two items called "interview prep", then "delete interview prep" | `get_todo_items`, then **a question**, no delete                               | Ambiguity → ask                    |
+| 6   | "Delete item 99"                                                | `get_todo_items` and/or `delete_todo_item(99)` → "Not deleted…" → honest reply | Error handling, no made-up success |
+| 7   | "What's the weather?"                                           | No tool call; politely declines                                                | Scope                              |
 
 **Results:** *(filled in after deploying)*
 
@@ -445,14 +447,14 @@ A small test set. Each prompt has an **expected** tool sequence to compare again
 
 ## Glossary
 
-| Term | Plain meaning |
-|---|---|
-| **Instructions / system prompt** | The rules the model gets at the start of every request |
-| **Tool definition** | A tool's name, description and input schema, as the model sees them |
-| **Input schema** | The list of a tool's parameters, with type and description (JSON Schema) |
-| **Tool call** | The model's request to run a tool with specific arguments |
-| **Tool result** | The text the tool returns, which the model reads next |
-| **MCP tool annotations** | Labels like `readOnlyHint` / `destructiveHint` describing a tool's behaviour |
-| **Allowed tools** | The explicit list of tools an agent may use from a server |
-| **Approval mode** | Whether a tool call must be approved by a person before it runs |
-| **Made-up action** | The model claims it did something without calling the tool |
+| Term                             | Plain meaning                                                                |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| **Instructions / system prompt** | The rules the model gets at the start of every request                       |
+| **Tool definition**              | A tool's name, description and input schema, as the model sees them          |
+| **Input schema**                 | The list of a tool's parameters, with type and description (JSON Schema)     |
+| **Tool call**                    | The model's request to run a tool with specific arguments                    |
+| **Tool result**                  | The text the tool returns, which the model reads next                        |
+| **MCP tool annotations**         | Labels like `readOnlyHint` / `destructiveHint` describing a tool's behaviour |
+| **Allowed tools**                | The explicit list of tools an agent may use from a server                    |
+| **Approval mode**                | Whether a tool call must be approved by a person before it runs              |
+| **Made-up action**               | The model claims it did something without calling the tool                   |

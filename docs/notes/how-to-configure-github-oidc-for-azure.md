@@ -33,12 +33,12 @@ Setting this up has **two halves**:
 
 You need:
 
-| What | Why | Check with |
-|---|---|---|
-| **Azure CLI**, signed in | To create the identity and roles | `az account show` |
-| Permission to **create app registrations** in Entra ID | Step 2. Allowed for normal users by default, unless your organisation turned it off | Try step 2; an error means ask an admin |
-| **Owner** or **User Access Administrator** (or RBAC Administrator) on the scope | Step 4: granting roles | `az role assignment list --assignee <your-email> --all -o table` |
-| **GitHub CLI**, signed in, admin on the repo | Steps 5–6: secrets and environments | `gh auth status` |
+| What                                                                            | Why                                                                                 | Check with                                                       |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Azure CLI**, signed in                                                        | To create the identity and roles                                                    | `az account show`                                                |
+| Permission to **create app registrations** in Entra ID                          | Step 2. Allowed for normal users by default, unless your organisation turned it off | Try step 2; an error means ask an admin                          |
+| **Owner** or **User Access Administrator** (or RBAC Administrator) on the scope | Step 4: granting roles                                                              | `az role assignment list --assignee <your-email> --all -o table` |
+| **GitHub CLI**, signed in, admin on the repo                                    | Steps 5–6: secrets and environments                                                 | `gh auth status`                                                 |
 
 Collect three values first:
 
@@ -56,12 +56,12 @@ Deciding these first saves redoing the setup later.
 
 **1. Which GitHub runs may sign in?** Each becomes one federated credential (step 3):
 
-| Runs you want to allow | Subject you'll register |
-|---|---|
-| Jobs that use the GitHub environment `dev` | `repo:JaspalSingh1759/enterprise-foundry-agent:environment:dev` |
-| Jobs on the `main` branch, no environment | `repo:JaspalSingh1759/enterprise-foundry-agent:ref:refs/heads/main` |
-| Jobs triggered by a tag like `v1.2.0` | `repo:JaspalSingh1759/enterprise-foundry-agent:ref:refs/tags/v1.2.0` |
-| Pull-request runs | `repo:JaspalSingh1759/enterprise-foundry-agent:pull_request` (usually **don't**, see Step 3) |
+| Runs you want to allow                     | Subject you'll register                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Jobs that use the GitHub environment `dev` | `repo:JaspalSingh1759/enterprise-foundry-agent:environment:dev`                              |
+| Jobs on the `main` branch, no environment  | `repo:JaspalSingh1759/enterprise-foundry-agent:ref:refs/heads/main`                          |
+| Jobs triggered by a tag like `v1.2.0`      | `repo:JaspalSingh1759/enterprise-foundry-agent:ref:refs/tags/v1.2.0`                         |
+| Pull-request runs                          | `repo:JaspalSingh1759/enterprise-foundry-agent:pull_request` (usually **don't**, see Step 3) |
 
 **Rule:** if a job declares `environment:`, GitHub uses the environment form, even on `main`. All jobs in this repo's `deploy.yml` declare one, so the **environment** form is the one that matters here.
 
@@ -71,11 +71,11 @@ Deciding these first saves redoing the setup later.
 
 **3. Which roles, on what scope?** Give the **smallest** that works:
 
-| Pipeline needs to... | Role | Scope |
-|---|---|---|
-| Create and change resources | **Contributor** | The environment's resource group if it already exists; the subscription if the pipeline must create the resource group itself |
-| Grant roles to the app's own identities (this repo's post-deploy steps do) | **Role Based Access Control Administrator**, ideally limited to specific roles | Same scope |
-| Only read things | **Reader** | Whatever it reads |
+| Pipeline needs to...                                                       | Role                                                                           | Scope                                                                                                                         |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Create and change resources                                                | **Contributor**                                                                | The environment's resource group if it already exists; the subscription if the pipeline must create the resource group itself |
+| Grant roles to the app's own identities (this repo's post-deploy steps do) | **Role Based Access Control Administrator**, ideally limited to specific roles | Same scope                                                                                                                    |
+| Only read things                                                           | **Reader**                                                                     | Whatever it reads                                                                                                             |
 
 ---
 
@@ -131,12 +131,12 @@ rm fed-dev.json
 
 What each field means:
 
-| Field | Value | Meaning |
-|---|---|---|
-| `name` | `github-env-dev` | Just a label for you |
-| `issuer` | `https://token.actions.githubusercontent.com` | Only tokens **signed by GitHub** |
-| `subject` | `repo:<owner>/<repo>:environment:dev` | Only from **this repo, in this environment**. Must match **exactly**: no wildcards, and capitals matter |
-| `audiences` | `["api://AzureADTokenExchange"]` | Only tokens **meant for Azure**. Always this value |
+| Field       | Value                                         | Meaning                                                                                                 |
+| ----------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `name`      | `github-env-dev`                              | Just a label for you                                                                                    |
+| `issuer`    | `https://token.actions.githubusercontent.com` | Only tokens **signed by GitHub**                                                                        |
+| `subject`   | `repo:<owner>/<repo>:environment:dev`         | Only from **this repo, in this environment**. Must match **exactly**: no wildcards, and capitals matter |
+| `audiences` | `["api://AzureADTokenExchange"]`              | Only tokens **meant for Azure**. Always this value                                                      |
 
 **Using the portal:**
 1. **App registrations → your app → Certificates & secrets → Federated credentials → Add credential.**
@@ -213,11 +213,11 @@ gh api -X PUT repos/JaspalSingh1759/enterprise-foundry-agent/environments/dev
 
 **Protection rules** decide *who* may run jobs in an environment. The subject only proves the run *entered* the environment, so the rules are part of your security:
 
-| Environment | Suggested rules |
-|---|---|
-| `dev` | None, or only from `main` |
-| `staging` | Only from `main` |
-| `prod` | Only from `main`, **plus required reviewers** (someone must approve each run) |
+| Environment | Suggested rules                                                               |
+| ----------- | ----------------------------------------------------------------------------- |
+| `dev`       | None, or only from `main`                                                     |
+| `staging`   | Only from `main`                                                              |
+| `prod`      | Only from `main`, **plus required reviewers** (someone must approve each run) |
 
 Set them under **Settings → Environments → prod → Deployment protection rules** and **Deployment branches and tags**.
 
@@ -290,14 +290,14 @@ jobs:
 
 Make a tiny workflow, for example `.github/workflows/oidc-test.yml`, with the YAML from step 7 and `on: workflow_dispatch`. Run it from the **Actions** tab.
 
-| What you see | Meaning |
-|---|---|
-| `az account show` prints your subscription | ✅ Sign-in works |
-| `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL` | Missing `permissions: id-token: write` |
+| What you see                                                                                      | Meaning                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `az account show` prints your subscription                                                        | ✅ Sign-in works                                                                                                                            |
+| `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL`                                                      | Missing `permissions: id-token: write`                                                                                                      |
 | `AADSTS700213: No matching federated identity record found for presented assertion subject '...'` | The subject doesn't match. The error **prints the subject GitHub sent**: copy it and compare it character by character with your credential |
-| An `AADSTS` error about the audience | The credential's audience isn't `api://AzureADTokenExchange` |
-| `AADSTS700016: Application ... was not found` | Wrong `AZURE_CLIENT_ID` or `AZURE_TENANT_ID` |
-| Sign-in works, a later step says `AuthorizationFailed` | OIDC is fine. The identity lacks a role at that scope (step 4) |
+| An `AADSTS` error about the audience                                                              | The credential's audience isn't `api://AzureADTokenExchange`                                                                                |
+| `AADSTS700016: Application ... was not found`                                                     | Wrong `AZURE_CLIENT_ID` or `AZURE_TENANT_ID`                                                                                                |
+| Sign-in works, a later step says `AuthorizationFailed`                                            | OIDC is fine. The identity lacks a role at that scope (step 4)                                                                              |
 
 Delete the test workflow afterwards, or keep it as a quick health check.
 

@@ -51,13 +51,13 @@ Think of a secure office building:
 
 ### Who's involved
 
-| Who | Role in the analogy | In this project |
-|---|---|---|
-| **GitHub** | The employer that signs passes | Built into GitHub Actions |
-| **Microsoft Entra ID** | Reception that checks passes | Your Azure tenant's identity service |
-| **The pipeline's identity** | The worker's badge in the building | `sp-enterprise-foundry-agent-github` |
-| **Federated credentials** | Reception's list of which passes to accept | Created by `scripts/setup-azure-oidc.sh` |
-| **Azure roles** | Which rooms the badge opens | Contributor and Role Based Access Control Administrator |
+| Who                         | Role in the analogy                        | In this project                                         |
+| --------------------------- | ------------------------------------------ | ------------------------------------------------------- |
+| **GitHub**                  | The employer that signs passes             | Built into GitHub Actions                               |
+| **Microsoft Entra ID**      | Reception that checks passes               | Your Azure tenant's identity service                    |
+| **The pipeline's identity** | The worker's badge in the building         | `sp-enterprise-foundry-agent-github`                    |
+| **Federated credentials**   | Reception's list of which passes to accept | Created by `scripts/setup-azure-oidc.sh`                |
+| **Azure roles**             | Which rooms the badge opens                | Contributor and Role Based Access Control Administrator |
 
 The three GitHub secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`) **aren't passwords**. They only say *which* badge, building and floor to use. On their own they can't get anyone in.
 
@@ -65,11 +65,11 @@ The three GitHub secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPT
 
 Everything in pipeline sign-in answers one of three questions. Keep them separate and the rest makes sense.
 
-| Question | Answered by | Set up | Used when |
-|---|---|---|---|
-| **Q1. WHO is the pipeline in Azure?** | The app registration + service principal `sp-enterprise-foundry-agent-github` | Once, by the setup script | Always: it's the identity everything else hangs on |
-| **Q2. WHO is allowed to act as it?** | The federated credentials: "accept tokens signed by GitHub, for this repo and environment, meant for Azure" | Once, by the setup script | At **sign-in** |
-| **Q3. WHAT may it do, and WHERE?** | Role assignments: Contributor + RBAC Administrator, on the subscription | Once, by the setup script | At **every action** afterwards |
+| Question                              | Answered by                                                                                                 | Set up                    | Used when                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------- |
+| **Q1. WHO is the pipeline in Azure?** | The app registration + service principal `sp-enterprise-foundry-agent-github`                               | Once, by the setup script | Always: it's the identity everything else hangs on |
+| **Q2. WHO is allowed to act as it?**  | The federated credentials: "accept tokens signed by GitHub, for this repo and environment, meant for Azure" | Once, by the setup script | At **sign-in**                                     |
+| **Q3. WHAT may it do, and WHERE?**    | Role assignments: Contributor + RBAC Administrator, on the subscription                                     | Once, by the setup script | At **every action** afterwards                     |
 
 ```
  SET UP ONCE                                    ON EVERY PIPELINE RUN
@@ -144,11 +144,11 @@ The repo name is hard-coded at the top of the script (`REPO="JaspalSingh1759/ent
 
 The script creates **three** entries:
 
-| Entry name | Subject | Lets these runs sign in |
-|---|---|---|
-| `github-main-branch` | `repo:…:ref:refs/heads/main` | Jobs on the `main` branch that don't use a GitHub environment |
-| `github-pull-requests` | `repo:…:pull_request` | Pull-request runs (see problem 2 below) |
-| `github-env-dev` | `repo:…:environment:dev` | Jobs that use the `dev` environment: **this is the one your deploys use** |
+| Entry name             | Subject                      | Lets these runs sign in                                                   |
+| ---------------------- | ---------------------------- | ------------------------------------------------------------------------- |
+| `github-main-branch`   | `repo:…:ref:refs/heads/main` | Jobs on the `main` branch that don't use a GitHub environment             |
+| `github-pull-requests` | `repo:…:pull_request`        | Pull-request runs (see problem 2 below)                                   |
+| `github-env-dev`       | `repo:…:environment:dev`     | Jobs that use the `dev` environment: **this is the one your deploys use** |
 
 It skips any entry that already exists, so running it twice is safe.
 
@@ -167,10 +167,10 @@ az role assignment create --role "Role Based Access Control Administrator" \
     --assignee "$APP_ID" --scope "$SUBSCRIPTION_SCOPE" || true
 ```
 
-| Role | What it allows | Why the pipeline needs it |
-|---|---|---|
-| **Contributor** | Create, change and delete **any resource** | Creating the resource group, Container Apps, registry, Foundry account and so on |
-| **Role Based Access Control Administrator** | Grant and remove **roles** for anyone | The post-deploy steps that give the app identity and the agent identity access to Foundry |
+| Role                                        | What it allows                             | Why the pipeline needs it                                                                 |
+| ------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| **Contributor**                             | Create, change and delete **any resource** | Creating the resource group, Container Apps, registry, Foundry account and so on          |
+| **Role Based Access Control Administrator** | Grant and remove **roles** for anyone      | The post-deploy steps that give the app identity and the agent identity access to Foundry |
 
 Both are given at **subscription scope** (`/subscriptions/<id>`), so they apply to **everything** in the subscription, not just this project's resource group. That's convenient, because the resource group doesn't exist yet when the pipeline first runs, but it's much more power than the pipeline needs. Together they're close to **Owner**: because the identity can grant roles, it could grant itself any extra permission it lacks.
 
@@ -230,19 +230,19 @@ When the job finishes, the GitHub machine it ran on is thrown away.
 
 Azure compares **three things** on the pass with its list. All three must match exactly:
 
-| Field | Means | Must be |
-|---|---|---|
-| **Issuer** (`iss`) | Who signed the pass | `https://token.actions.githubusercontent.com` (GitHub) |
-| **Audience** (`aud`) | Who the pass is meant for | `api://AzureADTokenExchange` (Azure) |
-| **Subject** (`sub`) | Which run it is | An entry on the list, such as `repo:JaspalSingh1759/enterprise-foundry-agent:environment:dev` |
+| Field                | Means                     | Must be                                                                                       |
+| -------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| **Issuer** (`iss`)   | Who signed the pass       | `https://token.actions.githubusercontent.com` (GitHub)                                        |
+| **Audience** (`aud`) | Who the pass is meant for | `api://AzureADTokenExchange` (Azure)                                                          |
+| **Subject** (`sub`)  | Which run it is           | An entry on the list, such as `repo:JaspalSingh1759/enterprise-foundry-agent:environment:dev` |
 
 **The subject is the important one.** It decides *which pipeline runs* may sign in. GitHub writes it like this:
 
-| If the job... | The subject says |
-|---|---|
-| runs in a GitHub environment (like `dev`) | `...:environment:dev` |
+| If the job...                             | The subject says          |
+| ----------------------------------------- | ------------------------- |
+| runs in a GitHub environment (like `dev`) | `...:environment:dev`     |
 | runs on the `main` branch, no environment | `...:ref:refs/heads/main` |
-| runs for a pull request | `...:pull_request` |
+| runs for a pull request                   | `...:pull_request`        |
 
 All jobs in `deploy.yml` use an environment, so your deploys present `...:environment:dev`.
 
@@ -323,24 +323,24 @@ At run time the action calls **STS `AssumeRoleWithWebIdentity`**. STS checks the
 
 **The same pieces in Azure:**
 
-| AWS | Azure | In this project |
-|---|---|---|
-| **IAM role** (the identity the pipeline becomes) | **App registration + service principal** | `sp-enterprise-foundry-agent-github` |
-| **Trust policy** (who may assume the role) | **Federated credentials** on the app registration | `github-env-dev`, `github-main-branch`, … |
-| **IAM OIDC identity provider** | No separate object: the issuer is written inside each federated credential | `"issuer": "https://token.actions.githubusercontent.com"` |
-| **Permission policies** (what the role can do) | **Role assignments** on the service principal | Contributor, RBAC Administrator |
-| **AWS account** | **Subscription** | `aaf2b1a9-…` |
-| **STS `AssumeRoleWithWebIdentity`** | **Entra ID token exchange**, done by `azure/login` | — |
-| **Temporary credentials** (~1 hour) | **Access token** (~1 hour) | — |
-| **`role-to-assume` ARN** | `client-id` + `tenant-id` + `subscription-id` | The three GitHub secrets |
+| AWS                                              | Azure                                                                      | In this project                                           |
+| ------------------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **IAM role** (the identity the pipeline becomes) | **App registration + service principal**                                   | `sp-enterprise-foundry-agent-github`                      |
+| **Trust policy** (who may assume the role)       | **Federated credentials** on the app registration                          | `github-env-dev`, `github-main-branch`, …                 |
+| **IAM OIDC identity provider**                   | No separate object: the issuer is written inside each federated credential | `"issuer": "https://token.actions.githubusercontent.com"` |
+| **Permission policies** (what the role can do)   | **Role assignments** on the service principal                              | Contributor, RBAC Administrator                           |
+| **AWS account**                                  | **Subscription**                                                           | `aaf2b1a9-…`                                              |
+| **STS `AssumeRoleWithWebIdentity`**              | **Entra ID token exchange**, done by `azure/login`                         | —                                                         |
+| **Temporary credentials** (~1 hour)              | **Access token** (~1 hour)                                                 | —                                                         |
+| **`role-to-assume` ARN**                         | `client-id` + `tenant-id` + `subscription-id`                              | The three GitHub secrets                                  |
 
 **The trust policy, field by field:**
 
-| AWS trust-policy part | Azure federated-credential field |
-|---|---|
-| `Principal.Federated` (the OIDC provider) | `issuer` |
-| `Condition ...:sub` | `subject`: the **same string**, because GitHub creates it |
-| `Condition ...:aud` = `sts.amazonaws.com` | `audiences` = `api://AzureADTokenExchange` |
+| AWS trust-policy part                     | Azure federated-credential field                          |
+| ----------------------------------------- | --------------------------------------------------------- |
+| `Principal.Federated` (the OIDC provider) | `issuer`                                                  |
+| `Condition ...:sub`                       | `subject`: the **same string**, because GitHub creates it |
+| `Condition ...:aud` = `sts.amazonaws.com` | `audiences` = `api://AzureADTokenExchange`                |
 
 One difference: AWS allows wildcards (`StringLike` with `repo:org/repo:*`). Azure federated credentials need an **exact** subject, which is why Azure needs one entry per branch or environment.
 
@@ -365,37 +365,37 @@ Azure:  role assignment = { who:   service principal,
 
 **This project's roles, in AWS terms:**
 
-| Azure role, on the whole subscription | Closest AWS equivalent |
-|---|---|
-| **Contributor** | Roughly **`PowerUserAccess`**: manage almost any resource, but **no IAM changes** |
+| Azure role, on the whole subscription       | Closest AWS equivalent                                                                                                                                       |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Contributor**                             | Roughly **`PowerUserAccess`**: manage almost any resource, but **no IAM changes**                                                                            |
 | **Role Based Access Control Administrator** | The IAM permissions to **attach policies** (`iam:AttachRolePolicy`, `iam:PutRolePolicy`), needed so the pipeline can give the app identity access to Foundry |
-| **Both together** | Close to **`AdministratorAccess`**, because the pipeline could grant itself anything it lacks |
+| **Both together**                           | Close to **`AdministratorAccess`**, because the pipeline could grant itself anything it lacks                                                                |
 
 **The whole flow, side by side:**
 
-| Step | Azure (this project) | AWS |
-|---|---|---|
-| Set up | Create app registration + service principal | Create the IAM role |
-| Set up | Add federated credential (issuer, subject, audience) | Write the role's trust policy |
-| Set up | Assign Contributor + RBAC Admin on the subscription | Attach permission policies to the role |
-| Set up | Store client, tenant and subscription IDs in GitHub | Store the role ARN in GitHub |
-| Each run | GitHub gives the job a signed token | Same token, same claims |
-| Each run | `azure/login` exchanges it with Entra ID | `configure-aws-credentials` calls STS |
-| Each run | Entra ID checks the federated credential | STS checks the trust policy |
-| Each run | Returns an access token for the identity | Returns temporary credentials for the role |
+| Step     | Azure (this project)                                      | AWS                                            |
+| -------- | --------------------------------------------------------- | ---------------------------------------------- |
+| Set up   | Create app registration + service principal               | Create the IAM role                            |
+| Set up   | Add federated credential (issuer, subject, audience)      | Write the role's trust policy                  |
+| Set up   | Assign Contributor + RBAC Admin on the subscription       | Attach permission policies to the role         |
+| Set up   | Store client, tenant and subscription IDs in GitHub       | Store the role ARN in GitHub                   |
+| Each run | GitHub gives the job a signed token                       | Same token, same claims                        |
+| Each run | `azure/login` exchanges it with Entra ID                  | `configure-aws-credentials` calls STS          |
+| Each run | Entra ID checks the federated credential                  | STS checks the trust policy                    |
+| Each run | Returns an access token for the identity                  | Returns temporary credentials for the role     |
 | Each run | Every `az`/`azd` call is checked against role assignments | Every API call is checked against the policies |
 
 **One line to remember:** *signing in = assuming the role (checked against the trust policy / federated credential); permissions = the policies attached to it (role assignments).* A role with a correct trust policy but no permissions can be assumed, but every call is denied. In Azure: sign-in works, then `AuthorizationFailed`.
 
 ### How a production team would tighten this
 
-| Today | Better |
-|---|---|
-| One identity for all environments | One identity per environment |
-| Allowed to change the whole subscription | Only allowed into its own resource group |
-| Can grant any role | Can grant only the few roles this project needs |
-| `dev` environment has no rules | `prod` needs an approval and only runs from `main` |
-| Pull requests can sign in | They can't |
+| Today                                    | Better                                             |
+| ---------------------------------------- | -------------------------------------------------- |
+| One identity for all environments        | One identity per environment                       |
+| Allowed to change the whole subscription | Only allowed into its own resource group           |
+| Can grant any role                       | Can grant only the few roles this project needs    |
+| `dev` environment has no rules           | `prod` needs an approval and only runs from `main` |
+| Pull requests can sign in                | They can't                                         |
 
 ### Check it yourself
 
@@ -411,12 +411,12 @@ az role assignment list --all --assignee 3bfa7b5e-ffc5-48b4-b94a-ac978aa796ac \
 
 ### When it goes wrong
 
-| You see | It usually means |
-|---|---|
-| `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL` | The workflow is missing `permissions: id-token: write` |
+| You see                                              | It usually means                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------------------- |
+| `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL`         | The workflow is missing `permissions: id-token: write`                |
 | `AADSTS700213 No matching federated identity record` | The subject doesn't match the list: wrong environment, branch or repo |
-| An `AADSTS` error mentioning the audience | Wrong audience; it must be `api://AzureADTokenExchange` |
-| Sign-in works, then `AuthorizationFailed` | The identity lacks a role for that action |
+| An `AADSTS` error mentioning the audience            | Wrong audience; it must be `api://AzureADTokenExchange`               |
+| Sign-in works, then `AuthorizationFailed`            | The identity lacks a role for that action                             |
 
 ---
 
@@ -469,13 +469,13 @@ Each stage runs on a **brand-new GitHub machine** that knows nothing about the p
 
 ### Why not do it all in one go?
 
-| Reason | In simple words |
-|---|---|
-| **Order matters** | Each stage needs the previous stage's result |
-| **Different tools** | Stage 2 deploys an AI agent with a special azd extension; stages 1 and 3 deploy normal web apps |
-| **Change one part alone** | Fix the API without touching the AI agent: `azd deploy` in just that folder |
-| **Smaller damage** | If stage 2 breaks, stage 3 never runs against a half-built setup |
-| **Team boundaries** | In bigger companies, different teams own these parts |
+| Reason                    | In simple words                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Order matters**         | Each stage needs the previous stage's result                                                    |
+| **Different tools**       | Stage 2 deploys an AI agent with a special azd extension; stages 1 and 3 deploy normal web apps |
+| **Change one part alone** | Fix the API without touching the AI agent: `azd deploy` in just that folder                     |
+| **Smaller damage**        | If stage 2 breaks, stage 3 never runs against a half-built setup                                |
+| **Team boundaries**       | In bigger companies, different teams own these parts                                            |
 
 ### The hidden links (where things break)
 
@@ -556,16 +556,16 @@ When a deploy fails in a confusing way, check these four first.
 
 ## Glossary
 
-| Term | Plain meaning |
-|---|---|
-| **OIDC** (OpenID Connect) | A standard way for one system to vouch for who someone is, using signed tokens |
-| **Token / JWT** | A small signed piece of text that says who you are; it can't be changed without breaking the signature |
-| **Claim** | One fact inside a token, like the subject or audience |
-| **Federated credential** | An entry on Azure's "which outside passes to accept" list |
-| **Service principal** | An identity for a program (not a person) in Azure |
-| **App registration** | The definition behind a service principal |
-| **Azure role (RBAC)** | A named set of permissions, given to an identity for a specific area |
-| **Scope** | The area a role applies to: a subscription, a resource group, or one resource |
-| **Bicep** | Azure's language for describing infrastructure as code |
-| **Job output** | A value one GitHub Actions job passes to later jobs |
-| **Idempotent** | Safe to run again: repeating it gives the same result |
+| Term                      | Plain meaning                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **OIDC** (OpenID Connect) | A standard way for one system to vouch for who someone is, using signed tokens                         |
+| **Token / JWT**           | A small signed piece of text that says who you are; it can't be changed without breaking the signature |
+| **Claim**                 | One fact inside a token, like the subject or audience                                                  |
+| **Federated credential**  | An entry on Azure's "which outside passes to accept" list                                              |
+| **Service principal**     | An identity for a program (not a person) in Azure                                                      |
+| **App registration**      | The definition behind a service principal                                                              |
+| **Azure role (RBAC)**     | A named set of permissions, given to an identity for a specific area                                   |
+| **Scope**                 | The area a role applies to: a subscription, a resource group, or one resource                          |
+| **Bicep**                 | Azure's language for describing infrastructure as code                                                 |
+| **Job output**            | A value one GitHub Actions job passes to later jobs                                                    |
+| **Idempotent**            | Safe to run again: repeating it gives the same result                                                  |

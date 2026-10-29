@@ -22,24 +22,24 @@ How we'll add offline evaluation, online evaluation, judge-model evaluators and 
                         └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Part | What | Type | Gate or alert |
-|---|---|---|---|
-| A | State-based checks | Offline | Blocks the deploy |
-| B | Judge-model evaluators on a test set | Offline | Blocks the deploy |
-| C | Quality signals from traces (KQL) | Online | Alerts |
-| D | Judge evaluators on sampled live traffic | Online | Dashboard / alert |
-| E | Feedback loop: production failures → test cases | Process | — |
+| Part | What                                            | Type    | Gate or alert     |
+| ---- | ----------------------------------------------- | ------- | ----------------- |
+| A    | State-based checks                              | Offline | Blocks the deploy |
+| B    | Judge-model evaluators on a test set            | Offline | Blocks the deploy |
+| C    | Quality signals from traces (KQL)               | Online  | Alerts            |
+| D    | Judge evaluators on sampled live traffic        | Online  | Dashboard / alert |
+| E    | Feedback loop: production failures → test cases | Process | —                 |
 
 ---
 
 ## Step 0: Prerequisites and decisions
 
-| # | Item | Why | Plan |
-|---|---|---|---|
-| 0.1 | **A judge model deployment** | The judge should be stronger than, and different from, the agent's `gpt-5-mini` (Day 5 notes, Part 3). | Add a second model deployment to the Foundry Bicep (`resources-foundry/infra`) as a parameter, e.g. `AZURE_AI_EVAL_MODEL_DEPLOYMENT_NAME`. Pick the model from what's available in the region and quota. |
-| 0.2 | **Pipeline identity can call the agent** | The gate runs as the pipeline service principal (`sp-enterprise-foundry-agent-github`). It has Contributor, which covers the **control plane** only. Calling the agent and running evals is **data plane**. | Grant the pipeline SP **Azure AI User** on the Foundry project in Bicep (same pattern as the gateway identity in Day 2). |
-| 0.3 | **Update the tools** | The `azure.ai.agents` extension is a beta (installed beta.21, beta.22 available). Eval commands are new. | `azd extension update azure.ai.agents` locally, and pin the version in the pipeline so a beta release can't break the gate. |
-| 0.4 | **Where tests point** | State checks change data. Our MCP server uses an **in-memory SQLite database shared by all users**. | Run state checks against **dev only**, one at a time (Step A.4). Never against prod. |
+| #   | Item                                     | Why                                                                                                                                                                                                         | Plan                                                                                                                                                                                                     |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1 | **A judge model deployment**             | The judge should be stronger than, and different from, the agent's `gpt-5-mini` (Day 5 notes, Part 3).                                                                                                      | Add a second model deployment to the Foundry Bicep (`resources-foundry/infra`) as a parameter, e.g. `AZURE_AI_EVAL_MODEL_DEPLOYMENT_NAME`. Pick the model from what's available in the region and quota. |
+| 0.2 | **Pipeline identity can call the agent** | The gate runs as the pipeline service principal (`sp-enterprise-foundry-agent-github`). It has Contributor, which covers the **control plane** only. Calling the agent and running evals is **data plane**. | Grant the pipeline SP **Azure AI User** on the Foundry project in Bicep (same pattern as the gateway identity in Day 2).                                                                                 |
+| 0.3 | **Update the tools**                     | The `azure.ai.agents` extension is a beta (installed beta.21, beta.22 available). Eval commands are new.                                                                                                    | `azd extension update azure.ai.agents` locally, and pin the version in the pipeline so a beta release can't break the gate.                                                                              |
+| 0.4 | **Where tests point**                    | State checks change data. Our MCP server uses an **in-memory SQLite database shared by all users**.                                                                                                         | Run state checks against **dev only**, one at a time (Step A.4). Never against prod.                                                                                                                     |
 
 ---
 
@@ -62,11 +62,11 @@ tests/
 
 Configuration comes from environment variables, so the same tests run locally and in CI:
 
-| Variable | Source |
-|---|---|
-| `AGENT_ENDPOINT` | Stage 2 output (the Foundry agent responses endpoint) |
-| `MCP_TODO_URL` | Stage 1 output |
-| `MCP_API_KEY` | Read from Key Vault at runtime, never stored in GitHub |
+| Variable         | Source                                                 |
+| ---------------- | ------------------------------------------------------ |
+| `AGENT_ENDPOINT` | Stage 2 output (the Foundry agent responses endpoint)  |
+| `MCP_TODO_URL`   | Stage 1 output                                         |
+| `MCP_API_KEY`    | Read from Key Vault at runtime, never stored in GitHub |
 
 ### A.2 How one test works
 
@@ -80,16 +80,16 @@ We call the **Foundry agent endpoint directly**, not the gateway, because in sta
 
 ### A.3 First test cases (8)
 
-| # | Seed list | Prompt | Expected state |
-|---|---|---|---|
-| 1 | empty | "add buy milk" | 1 item, text contains "milk", not completed |
-| 2 | empty | "add buy milk, call mum and pay rent" | 3 items |
-| 3 | buy milk, call mum | "I finished buy milk" | 2 items; milk **completed**, mum not |
-| 4 | buy milk, call mum | "delete call mum" | 1 item: buy milk, unchanged |
-| 5 | buy milk | "rename buy milk to buy oat milk" | 1 item, text contains "oat milk" |
-| 6 | buy milk, call mum | "delete everything" | **unchanged** (the agent must confirm first) |
-| 7 | buy milk, buy bread | "I'm done with the buy item" | **unchanged** (ambiguous → it must ask) |
-| 8 | buy milk | "what's the weather?" | **unchanged** (out of scope) |
+| #   | Seed list           | Prompt                                | Expected state                               |
+| --- | ------------------- | ------------------------------------- | -------------------------------------------- |
+| 1   | empty               | "add buy milk"                        | 1 item, text contains "milk", not completed  |
+| 2   | empty               | "add buy milk, call mum and pay rent" | 3 items                                      |
+| 3   | buy milk, call mum  | "I finished buy milk"                 | 2 items; milk **completed**, mum not         |
+| 4   | buy milk, call mum  | "delete call mum"                     | 1 item: buy milk, unchanged                  |
+| 5   | buy milk            | "rename buy milk to buy oat milk"     | 1 item, text contains "oat milk"             |
+| 6   | buy milk, call mum  | "delete everything"                   | **unchanged** (the agent must confirm first) |
+| 7   | buy milk, buy bread | "I'm done with the buy item"          | **unchanged** (ambiguous → it must ask)      |
+| 8   | buy milk            | "what's the weather?"                 | **unchanged** (out of scope)                 |
 
 Checks are loose where wording varies: case-insensitive "contains", never exact text.
 
@@ -125,27 +125,27 @@ azd ai agent eval generate \
 - Generating writes `eval.yaml` plus a dataset. **Review every case by hand**: delete weak ones, fix wrong expectations, and keep 20–30.
 - Make sure the set covers each category below. Add any missing ones by hand:
 
-| Category | Cases | Examples |
-|---|---|---|
-| Add | 4 | single, several at once, odd wording ("note down…") |
-| List | 3 | "what's on my list", empty list |
-| Complete vs delete | 6 | "finished", "done", "ticked off", "remove", "get rid of" (**the confusion Day 4 fixed**) |
-| Update | 3 | rename, fix a typo |
-| Ambiguous / risky | 4 | two matching items, "delete everything", item that doesn't exist |
-| Out of scope | 3 | weather, coding question, prompt injection ("ignore your instructions…") |
-| Errors | 2 | ID that doesn't exist, empty text |
+| Category           | Cases | Examples                                                                                 |
+| ------------------ | ----- | ---------------------------------------------------------------------------------------- |
+| Add                | 4     | single, several at once, odd wording ("note down…")                                      |
+| List               | 3     | "what's on my list", empty list                                                          |
+| Complete vs delete | 6     | "finished", "done", "ticked off", "remove", "get rid of" (**the confusion Day 4 fixed**) |
+| Update             | 3     | rename, fix a typo                                                                       |
+| Ambiguous / risky  | 4     | two matching items, "delete everything", item that doesn't exist                         |
+| Out of scope       | 3     | weather, coding question, prompt injection ("ignore your instructions…")                 |
+| Errors             | 2     | ID that doesn't exist, empty text                                                        |
 
 - Commit the reviewed dataset and `eval.yaml`. **The test set is code:** it changes through pull requests.
 
 ### B.2 Choose the evaluators
 
-| Evaluator | Why for this agent | Threshold |
-|---|---|---|
-| `builtin.intent_resolution` | Did it understand complete vs delete vs update? | ≥ 90% of cases pass |
-| `builtin.task_adherence` | Did it follow the rules (confirm deletes, stay in scope)? | ≥ 90% |
-| `builtin.tool_call_accuracy` | Right tools, right IDs, list first? | ≥ 90% |
-| Relevance | Is the reply on topic? | ≥ 90% |
-| A safety evaluator | Nothing harmful, even under prompt injection | 100% |
+| Evaluator                    | Why for this agent                                        | Threshold           |
+| ---------------------------- | --------------------------------------------------------- | ------------------- |
+| `builtin.intent_resolution`  | Did it understand complete vs delete vs update?           | ≥ 90% of cases pass |
+| `builtin.task_adherence`     | Did it follow the rules (confirm deletes, stay in scope)? | ≥ 90%               |
+| `builtin.tool_call_accuracy` | Right tools, right IDs, list first?                       | ≥ 90%               |
+| Relevance                    | Is the reply on topic?                                    | ≥ 90%               |
+| A safety evaluator           | Nothing harmful, even under prompt injection              | 100%                |
 
 Use the exact evaluator names that `eval generate` writes into `eval.yaml`; the names above are the expected ones and will be confirmed when we run it.
 
@@ -170,19 +170,21 @@ Results also show up in the Foundry portal under the project's **Evaluations**, 
 - A reviewed, committed test set of 20–30 cases.
 - One run with scores recorded, and the judge calibrated.
 
+**Status: done** (run 4). The plan changed on the way: `tool_call_accuracy` and `task_completion` were dropped, a custom policy rubric was added, and the gate becomes a separate eval with only the calibrated evaluators. See [day-05-judge-evaluators.md](day-05-judge-evaluators.md) Parts 6–8.
+
 ---
 
 ## Part C: Quality signals from traces (online)
 
 **Goal:** catch problems in production with no expected answers and no extra model calls. These are plain KQL queries over the traces we already collect.
 
-| Signal | What it means | KQL source |
-|---|---|---|
-| **Tool error rate** | % of `execute_tool` spans whose result starts with "Not " or that failed | `dependencies` where name starts with `execute_tool` |
-| **Tool calls per request** | > 6 in one request suggests a loop | count `execute_tool` per `operation_Id` |
-| **Mutations without listing** | `delete`/`complete`/`update` with no `get_todo_items` before it in the same request: the agent guessed an ID | order tool spans per `operation_Id` |
-| **Deletes per request** | > 2 deletes in one request is suspicious | count `delete_todo_item` per `operation_Id` |
-| **Refusal rate** | Sudden jump in "I can only manage the to-do list" replies means it's refusing valid requests | reply text on `invoke_agent` spans |
+| Signal                        | What it means                                                                                                | KQL source                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **Tool error rate**           | % of `execute_tool` spans whose result starts with "Not " or that failed                                     | `dependencies` where name starts with `execute_tool` |
+| **Tool calls per request**    | > 6 in one request suggests a loop                                                                           | count `execute_tool` per `operation_Id`              |
+| **Mutations without listing** | `delete`/`complete`/`update` with no `get_todo_items` before it in the same request: the agent guessed an ID | order tool spans per `operation_Id`                  |
+| **Deletes per request**       | > 2 deletes in one request is suspicious                                                                     | count `delete_todo_item` per `operation_Id`          |
+| **Refusal rate**              | Sudden jump in "I can only manage the to-do list" replies means it's refusing valid requests                 | reply text on `invoke_agent` spans                   |
 
 ### C.1 Steps
 
@@ -192,6 +194,8 @@ Results also show up in the Foundry portal under the project's **Evaluations**, 
 ### C.2 Done when
 
 - Each query returns sensible numbers for today's traffic.
+
+**Status: done.** The plan changed on the way: Foundry's `execute_tool` spans no longer arrive, so the queries use the MCP server's spans instead. The refusal-rate signal needs reply text and is a documented gap. The MCP server's default rate-limited sampling dropped the #7 bulk delete during an eval burst, so it now keeps every trace. See [day-05-quality-signals.md](day-05-quality-signals.md).
 
 ---
 
@@ -264,11 +268,11 @@ Foundry caches the MCP tool list for roughly 10–15 minutes (Day 5 notes, Part 
 
 The gate runs on every deploy, because any of these can change behaviour without a C# change:
 
-| Change | Path filter |
-|---|---|
-| Agent instructions | `src/MafStarterPack.HostedAgent/**` |
-| Tool descriptions | `src/MafStarterPack.McpTodo/**` |
-| Model or model version | `resources-foundry/infra/**` |
+| Change                 | Path filter                                      |
+| ---------------------- | ------------------------------------------------ |
+| Agent instructions     | `src/MafStarterPack.HostedAgent/**`              |
+| Tool descriptions      | `src/MafStarterPack.McpTodo/**`                  |
+| Model or model version | `resources-foundry/infra/**`                     |
 | Test set or thresholds | `evals/**`, `tests/MafStarterPack.AgentEvals/**` |
 
 ### E.4 Done when
@@ -299,33 +303,33 @@ Written into the Day 5 notes as the team's working rule: **"no prod failure is f
 
 ## Order of work
 
-| Order | Part | Effort | Why this order |
-|---|---|---|---|
-| 1 | Step 0 (judge model, pipeline role, tools) ✅ done | Small | Everything else depends on it |
-| 2 | A: state checks ✅ done (8/8 passing; proved it fails on a broken description) | Medium | Exact and free; catches the worst failures; no judge needed |
-| 3 | B: test set + judge evaluators | Medium | Needs the judge model; reviewing the set takes the time |
-| 4 | E: CI gate | Small | Wires A and B into the pipeline |
-| 5 | C: KQL signals | Small | Queries only; Day 6 turns them into alerts |
-| 6 | D: online judge | Medium | Depends on what Foundry supports for hosted agents |
-| 7 | F: the feedback loop | Writing | Write the rule into the notes |
+| Order | Part                                                                                                                          | Effort  | Why this order                                              |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------- |
+| 1     | Step 0 (judge model, pipeline role, tools) ✅ done                                                                            | Small   | Everything else depends on it                               |
+| 2     | A: state checks ✅ done (8/8 passing; proved it fails on a broken description)                                                | Medium  | Exact and free; catches the worst failures; no judge needed |
+| 3     | B: test set + judge evaluators ✅ done (policy rubric calibrated 27/27; built-in judges report-only; bugs #7 and #15 found)   | Medium  | Needs the judge model; reviewing the set takes the time     |
+| 4     | E: CI gate                                                                                                                    | Small   | Wires A and B into the pipeline                             |
+| 5     | C: KQL signals ✅ done (6 queries on the MCP server's spans; refusal rate not possible without Foundry spans; sampling fixed) | Small   | Queries only; Day 6 turns them into alerts                  |
+| 6     | D: online judge                                                                                                               | Medium  | Depends on what Foundry supports for hosted agents          |
+| 7     | F: the feedback loop                                                                                                          | Writing | Write the rule into the notes                               |
 
 ## Cost, roughly
 
-| Item | Cost driver |
-|---|---|
-| State checks | Agent tokens only: ~8 cases × ~3 model calls per case, per deploy, plus retries |
+| Item             | Cost driver                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| State checks     | Agent tokens only: ~8 cases × ~3 model calls per case, per deploy, plus retries       |
 | Judge evaluation | Agent tokens for 30 cases, plus judge tokens (several evaluators per case) per deploy |
-| Online judge | Judge tokens for the sample; capped by the sample limit |
-| KQL signals | Free beyond the App Insights data we already store |
+| Online judge     | Judge tokens for the sample; capped by the sample limit                               |
+| KQL signals      | Free beyond the App Insights data we already store                                    |
 
 All of it is small at our traffic. The point to make in an interview: **cap online sampling**, because it's the only part that grows with traffic.
 
 ## Risks and open questions
 
-| Risk | Plan |
-|---|---|
-| The eval commands are beta and may change | Pin the extension version in CI; keep state checks (plain C#) as the gate that doesn't depend on them. |
-| Judge scores are noisy, so the gate flaps | Threshold with a margin, calibration (B.3), retries; if it still flaps, compare with the previous run's score instead of a fixed number. |
-| State checks interfere with real users in a shared list | Dev only, run one at a time, until Day 3 adds per-user lists. |
-| Continuous evaluation may not support hosted agents | Fall back to the nightly job (D.1 option 2). |
-| Test data or real conversations leaking | The judge is our own Foundry deployment; the MCP key is read from Key Vault at test time, never stored in GitHub or test files. |
+| Risk                                                    | Plan                                                                                                                                     |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| The eval commands are beta and may change               | Pin the extension version in CI; keep state checks (plain C#) as the gate that doesn't depend on them.                                   |
+| Judge scores are noisy, so the gate flaps               | Threshold with a margin, calibration (B.3), retries; if it still flaps, compare with the previous run's score instead of a fixed number. |
+| State checks interfere with real users in a shared list | Dev only, run one at a time, until Day 3 adds per-user lists.                                                                            |
+| Continuous evaluation may not support hosted agents     | Fall back to the nightly job (D.1 option 2).                                                                                             |
+| Test data or real conversations leaking                 | The judge is our own Foundry deployment; the MCP key is read from Key Vault at test time, never stored in GitHub or test files.          |

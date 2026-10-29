@@ -4,12 +4,12 @@ Notes for Day 2 of the [prep plan](../ai-platform-engineer-prep-plan.md).
 
 **Today in one sentence:** we treated the project like a security review had just come back with four findings, and fixed each one in infrastructure code.
 
-| # | Finding | Fix |
-|---|---|---|
-| 1 | Three apps share **one identity**, so each has the others' permissions | Give **each app its own identity** with only what it needs |
-| 2 | The MCP server is **on the internet with no login** | Require an **API key** on every request |
-| 3 | There's **no proper place for secrets** | Store the key in **Key Vault**; apps read it with their identity |
-| 4 | Permissions are granted by **shell scripts** | Declare them in **Bicep**, like the rest of the infrastructure |
+| #   | Finding                                                                | Fix                                                              |
+| --- | ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1   | Three apps share **one identity**, so each has the others' permissions | Give **each app its own identity** with only what it needs       |
+| 2   | The MCP server is **on the internet with no login**                    | Require an **API key** on every request                          |
+| 3   | There's **no proper place for secrets**                                | Store the key in **Key Vault**; apps read it with their identity |
+| 4   | Permissions are granted by **shell scripts**                           | Declare them in **Bicep**, like the rest of the infrastructure   |
 
 Each part below explains one fix: what was wrong, what we built, and how it works. AWS comparisons are included throughout.
 
@@ -45,12 +45,12 @@ The **scope** can be a subscription, a resource group, one resource, or even **o
 
 Azure has two kinds of permission, and mixing them up is a classic mistake:
 
-| | Control plane | Data plane |
-|---|---|---|
-| **Means** | Managing a resource | Using what's *inside* it |
-| **Key Vault example** | Create the vault, change its settings | Read a secret |
-| **Foundry example** | Create the account, deploy a model | Call the model, run an agent |
-| **Typical roles** | Contributor, Owner | Key Vault Secrets User, Azure AI User |
+|                       | Control plane                         | Data plane                            |
+| --------------------- | ------------------------------------- | ------------------------------------- |
+| **Means**             | Managing a resource                   | Using what's *inside* it              |
+| **Key Vault example** | Create the vault, change its settings | Read a secret                         |
+| **Foundry example**   | Create the account, deploy a model    | Call the model, run an agent          |
+| **Typical roles**     | Contributor, Owner                    | Key Vault Secrets User, Azure AI User |
 
 **Contributor gives no data-plane access.** A pipeline with Contributor can create a Key Vault but can't read its secrets. Apps only ever need data-plane roles.
 
@@ -90,15 +90,15 @@ Only `agent` (the gateway) calls Foundry, but **all three could**. The worst cas
  (agent identity, created by Foundry)
 ```
 
-| Identity | Used by | Can do | On what | Defined in |
-|---|---|---|---|---|
-| `id-webui-<token>` | web UI | Pull images (AcrPull) | Container registry | `infra/resources.bicep` |
-| `id-agent-<token>` | gateway | Pull images | Container registry | `infra/resources.bicep` |
-| | | Call Foundry (Azure AI User) | Foundry account | same |
-| `id-mcp-todo-<token>` | MCP server | Pull images | Container registry | `resources-mcp/infra/resources.bicep` |
-| | | Read secrets (Key Vault Secrets User) | **Only the `mcp-api-key` secret** | same |
-| `todo-agent` agent identity | hosted agent | Call the model (Cognitive Services OpenAI User) | Foundry account | `resources-foundry/scripts/post-deploy.sh` |
-| | | Read secrets | **Only the `mcp-api-key` secret** | same |
+| Identity                    | Used by      | Can do                                          | On what                           | Defined in                                 |
+| --------------------------- | ------------ | ----------------------------------------------- | --------------------------------- | ------------------------------------------ |
+| `id-webui-<token>`          | web UI       | Pull images (AcrPull)                           | Container registry                | `infra/resources.bicep`                    |
+| `id-agent-<token>`          | gateway      | Pull images                                     | Container registry                | `infra/resources.bicep`                    |
+|                             |              | Call Foundry (Azure AI User)                    | Foundry account                   | same                                       |
+| `id-mcp-todo-<token>`       | MCP server   | Pull images                                     | Container registry                | `resources-mcp/infra/resources.bicep`      |
+|                             |              | Read secrets (Key Vault Secrets User)           | **Only the `mcp-api-key` secret** | same                                       |
+| `todo-agent` agent identity | hosted agent | Call the model (Cognitive Services OpenAI User) | Foundry account                   | `resources-foundry/scripts/post-deploy.sh` |
+|                             |              | Read secrets                                    | **Only the `mcp-api-key` secret** | same                                       |
 
 Now:
 - **The web UI can't call Azure at all,** except to pull its own image. It only talks to the gateway over HTTPS.
@@ -162,11 +162,11 @@ This is worth saying in an interview: *"some platforms create identities at depl
 
 ### The options a DevOps engineer would weigh
 
-| Option | How it works | Verdict |
-|---|---|---|
-| **Make it private** (network) | Only reachable from inside a private network | Strongest, but Foundry calls the server from Microsoft's shared cloud. That needs private networking for Foundry too: expensive and complex. **Later.** |
-| **Microsoft Entra ID token** | Caller sends a signed token; server checks it | Strong and identity-based, but Foundry would need extra setup to fetch a token for every call. **A good next step.** |
-| **API key** ✅ | Caller sends a shared secret in a header; server compares it | Simple, and Foundry's MCP tool supports custom headers out of the box. **Closes the open door today.** |
+| Option                        | How it works                                                 | Verdict                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Make it private** (network) | Only reachable from inside a private network                 | Strongest, but Foundry calls the server from Microsoft's shared cloud. That needs private networking for Foundry too: expensive and complex. **Later.** |
+| **Microsoft Entra ID token**  | Caller sends a signed token; server checks it                | Strong and identity-based, but Foundry would need extra setup to fetch a token for every call. **A good next step.**                                    |
+| **API key** ✅                | Caller sends a shared secret in a header; server compares it | Simple, and Foundry's MCP tool supports custom headers out of the box. **Closes the open door today.**                                                  |
 
 We chose the API key. The rest of the design (the key in Key Vault, read by identities) stays the same if we later move to Entra tokens.
 
@@ -211,11 +211,11 @@ serverTool.Headers = new Dictionary<string, string> { ["x-api-key"] = secret.Val
 
 In [resources-mcp/infra/resources.bicep](../../resources-mcp/infra/resources.bicep):
 
-| Setting | Value | Why |
-|---|---|---|
-| RBAC mode (`enableRbacAuthorization`) | On | Access uses normal role assignments, the same "who + what + where" as everything else. The old alternative ("access policies") is a separate permission system just for vaults. |
-| Soft delete | 7 days | A deleted vault or secret can be recovered for 7 days. |
-| Purge protection | **Off** | So the dev environment can be fully deleted each night. **Turn it on in production**, so nobody can permanently destroy secrets early. |
+| Setting                               | Value   | Why                                                                                                                                                                             |
+| ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RBAC mode (`enableRbacAuthorization`) | On      | Access uses normal role assignments, the same "who + what + where" as everything else. The old alternative ("access policies") is a separate permission system just for vaults. |
+| Soft delete                           | 7 days  | A deleted vault or secret can be recovered for 7 days.                                                                                                                          |
+| Purge protection                      | **Off** | So the dev environment can be fully deleted each night. **Turn it on in production**, so nobody can permanently destroy secrets early.                                          |
 
 ### Where the key comes from
 
@@ -311,10 +311,10 @@ A side effect worth knowing: if the key in Key Vault changes, the running MCP ap
 **Misunderstanding 2: "Foundry reads the key from Key Vault with its own identity."**
 Not quite. Two **different** parts of Foundry are involved:
 
-| Part | What it does with the key |
-|---|---|
-| **The hosted agent container**, which is *our code* (`HostedAgent/Program.cs`) running on Foundry | **Reads** the key from Key Vault, using **the todo-agent's own agent identity** (step ②), and puts it in the MCP tool's `Headers` (step ③) |
-| **Foundry's Responses runtime**, Microsoft's service that runs the model | **Sends** the key: when the model chooses a tool, it calls the MCP server, using the tool definition our agent gave it, including the header (step ④) |
+| Part                                                                                              | What it does with the key                                                                                                                             |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The hosted agent container**, which is *our code* (`HostedAgent/Program.cs`) running on Foundry | **Reads** the key from Key Vault, using **the todo-agent's own agent identity** (step ②), and puts it in the MCP tool's `Headers` (step ③)            |
+| **Foundry's Responses runtime**, Microsoft's service that runs the model                          | **Sends** the key: when the model chooses a tool, it calls the MCP server, using the tool definition our agent gave it, including the header (step ④) |
 
 So "Foundry" never reads Key Vault on its own. **Our agent code does, with the agent's identity**, and Foundry's runtime just carries the header to the MCP server.
 
@@ -350,11 +350,11 @@ One declaration in Bicep (shown in Part 2). Bicep creates the identity, then gra
 
 ## Part 6: What each deploy stage does now
 
-| Stage | Creates | Grants |
-|---|---|---|
-| **1. MCP tier** | Key Vault + `mcp-api-key` secret, `id-mcp-todo-*`, registry, Container Apps environment, `mcp-todo` app | `id-mcp-todo-*`: AcrPull, read the one secret. Deployer: Key Vault Secrets Officer. *(Bicep)* |
-| **2. Foundry tier** | Foundry account, project, model; `todo-agent` version (and its identity, the first time) | Agent identity: OpenAI User on Foundry, read the one secret. *(post-deploy script)* |
-| **3. App tier** | `id-agent-*`, `id-webui-*`, `agent` and `webui` apps | Both: AcrPull. `id-agent-*`: Azure AI User on Foundry. *(Bicep)* |
+| Stage               | Creates                                                                                                 | Grants                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **1. MCP tier**     | Key Vault + `mcp-api-key` secret, `id-mcp-todo-*`, registry, Container Apps environment, `mcp-todo` app | `id-mcp-todo-*`: AcrPull, read the one secret. Deployer: Key Vault Secrets Officer. *(Bicep)* |
+| **2. Foundry tier** | Foundry account, project, model; `todo-agent` version (and its identity, the first time)                | Agent identity: OpenAI User on Foundry, read the one secret. *(post-deploy script)*           |
+| **3. App tier**     | `id-agent-*`, `id-webui-*`, `agent` and `webui` apps                                                    | Both: AcrPull. `id-agent-*`: Azure AI User on Foundry. *(Bicep)*                              |
 
 New values passed between stages: stage 1 now also hands **the Key Vault name and address** to stage 2, so the hosted agent knows where to read the key.
 
@@ -401,17 +401,17 @@ done
 
 **Results on Oct 26:**
 
-| Check | Result |
-|---|---|
-| MCP with no key | 401 ✅ |
-| MCP with a wrong key | 401 ✅ |
-| MCP with the right key | 200 ✅ |
-| `id-agent-*` | AcrPull + Foundry User only ✅ |
-| `id-webui-*` | AcrPull only ✅ |
-| `id-mcp-todo-*` | AcrPull + read `mcp-api-key` only ✅ |
-| Hosted agent identity | OpenAI User + read `mcp-api-key` only ✅ |
-| Hosted agent settings | Key Vault address and new MCP address present ✅ |
-| **Full chat request** | ❌ Not yet: the hosted agent fails to provision (Part 7, item 4) |
+| Check                  | Result                                                           |
+| ---------------------- | ---------------------------------------------------------------- |
+| MCP with no key        | 401 ✅                                                           |
+| MCP with a wrong key   | 401 ✅                                                           |
+| MCP with the right key | 200 ✅                                                           |
+| `id-agent-*`           | AcrPull + Foundry User only ✅                                   |
+| `id-webui-*`           | AcrPull only ✅                                                  |
+| `id-mcp-todo-*`        | AcrPull + read `mcp-api-key` only ✅                             |
+| Hosted agent identity  | OpenAI User + read `mcp-api-key` only ✅                         |
+| Hosted agent settings  | Key Vault address and new MCP address present ✅                 |
+| **Full chat request**  | ❌ Not yet: the hosted agent fails to provision (Part 7, item 4) |
 
 Still to confirm once the agent runs:
 - the agent reads the key and its tool calls get through
@@ -422,14 +422,14 @@ Still to confirm once the agent runs:
 
 ## Part 9: Trade-offs and next steps
 
-| Today | Why it's acceptable for now | Production next step |
-|---|---|---|
-| API key (a shared secret) | Blocks anonymous access | Entra ID tokens: each call tied to an identity, nothing to leak or rotate |
-| MCP server still on the public internet | Now refuses anonymous calls | Private networking (VNet integration, private endpoints) |
-| Key copy in the local `.env` | Git-ignored, your machine only | Generate the key inside Azure |
-| Purge protection off | Daily teardown of dev | On, in every shared environment |
-| Hosted agent's roles granted by a script | Foundry creates that identity at deploy time | Watch for Foundry support for pre-created identities |
-| App Insights connection string is a plain setting | It only allows *sending* telemetry; Microsoft doesn't treat it as a secret | Fine as is |
+| Today                                             | Why it's acceptable for now                                                | Production next step                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| API key (a shared secret)                         | Blocks anonymous access                                                    | Entra ID tokens: each call tied to an identity, nothing to leak or rotate |
+| MCP server still on the public internet           | Now refuses anonymous calls                                                | Private networking (VNet integration, private endpoints)                  |
+| Key copy in the local `.env`                      | Git-ignored, your machine only                                             | Generate the key inside Azure                                             |
+| Purge protection off                              | Daily teardown of dev                                                      | On, in every shared environment                                           |
+| Hosted agent's roles granted by a script          | Foundry creates that identity at deploy time                               | Watch for Foundry support for pre-created identities                      |
+| App Insights connection string is a plain setting | It only allows *sending* telemetry; Microsoft doesn't treat it as a secret | Fine as is                                                                |
 
 ---
 
@@ -457,15 +457,15 @@ Still to confirm once the agent runs:
 
 ## Glossary
 
-| Term | Plain meaning | AWS equivalent |
-|---|---|---|
-| **Managed identity** | An Azure identity for an app, with no password to manage | IAM role for an ECS task / EC2 instance |
-| **User-assigned identity** | A managed identity created as its own resource | A standalone IAM role |
-| **Role assignment** | Who + what + where | IAM policy attached to a role |
-| **Scope** | Where a role applies | The policy's `Resource` |
-| **Data plane / control plane** | Using a resource / managing it | e.g. `kms:Decrypt` / `kms:CreateKey` |
-| **Key Vault** | Azure's secrets store | Secrets Manager |
-| **Key Vault reference** | Container Apps fetches a secret and injects it as an env var | ECS `secrets` with `valueFrom` |
-| **Fail closed** | If something's misconfigured, deny everything | — |
-| **Idempotent** | Running it again changes nothing that's already right | — |
-| **`preup` / `preprovision` hook** | Scripts azd runs at the start of `azd up` / before `azd provision` | — |
+| Term                              | Plain meaning                                                      | AWS equivalent                          |
+| --------------------------------- | ------------------------------------------------------------------ | --------------------------------------- |
+| **Managed identity**              | An Azure identity for an app, with no password to manage           | IAM role for an ECS task / EC2 instance |
+| **User-assigned identity**        | A managed identity created as its own resource                     | A standalone IAM role                   |
+| **Role assignment**               | Who + what + where                                                 | IAM policy attached to a role           |
+| **Scope**                         | Where a role applies                                               | The policy's `Resource`                 |
+| **Data plane / control plane**    | Using a resource / managing it                                     | e.g. `kms:Decrypt` / `kms:CreateKey`    |
+| **Key Vault**                     | Azure's secrets store                                              | Secrets Manager                         |
+| **Key Vault reference**           | Container Apps fetches a secret and injects it as an env var       | ECS `secrets` with `valueFrom`          |
+| **Fail closed**                   | If something's misconfigured, deny everything                      | —                                       |
+| **Idempotent**                    | Running it again changes nothing that's already right              | —                                       |
+| **`preup` / `preprovision` hook** | Scripts azd runs at the start of `azd up` / before `azd provision` | —                                       |

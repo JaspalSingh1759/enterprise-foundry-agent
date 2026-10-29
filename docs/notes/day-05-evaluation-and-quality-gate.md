@@ -20,11 +20,11 @@ add(2, 3)  →  5      assert result == 5     ✅ always passes or always fails
 
 An agent breaks this in three ways:
 
-| Problem | Example in our project |
-|---|---|
-| **The output is text, and many answers are correct** | "Done, item 4 is complete." and "Marked 'buy milk' as finished ✅" are both right. `assert reply == "..."` would fail one of them. |
-| **The same input can give different outputs** | Run "I finished buy milk" 10 times and the wording changes every time. Rarely, the model might even pick a different tool. |
-| **It can break without any code change** | Someone edits a tool description (Day 4), Microsoft updates the model version, or the deployment is switched to a cheaper model. Our C# code is the same, but behaviour changes. |
+| Problem                                              | Example in our project                                                                                                                                                           |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The output is text, and many answers are correct** | "Done, item 4 is complete." and "Marked 'buy milk' as finished ✅" are both right. `assert reply == "..."` would fail one of them.                                               |
+| **The same input can give different outputs**        | Run "I finished buy milk" 10 times and the wording changes every time. Rarely, the model might even pick a different tool.                                                       |
+| **It can break without any code change**             | Someone edits a tool description (Day 4), Microsoft updates the model version, or the deployment is switched to a cheaper model. Our C# code is the same, but behaviour changes. |
 
 So instead of "pass or fail on one run", agent testing asks: **"over many test cases, how often does it do the right thing, and is that rate going down?"** That number is the **pass rate**, and it's what we'll put a gate on.
 
@@ -32,12 +32,12 @@ So instead of "pass or fail on one run", agent testing asks: **"over many test c
 
 An answer can be wrong in different ways, so we measure more than one thing:
 
-| Question | Example of failing it | How we check it |
-|---|---|---|
-| Did it do the **right action**? | Deleted "buy milk" when the user said "I finished buy milk". | State check (Part 4), tool-call check |
-| Did it call the **right tools, with the right arguments**? | Called `complete_todo_item(id=7)` without listing first, guessed the ID. | Tool-call check from traces (Day 4, Part 6) |
-| Is the **reply** right and useful? | Says "Done!" but the tool returned an error. Or answers the question it was not asked. | Judge model (Part 3) |
-| Is it **safe**? | Helps with an off-topic or harmful request. | Judge model with a safety evaluator |
+| Question                                                   | Example of failing it                                                                  | How we check it                             |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Did it do the **right action**?                            | Deleted "buy milk" when the user said "I finished buy milk".                           | State check (Part 4), tool-call check       |
+| Did it call the **right tools, with the right arguments**? | Called `complete_todo_item(id=7)` without listing first, guessed the ID.               | Tool-call check from traces (Day 4, Part 6) |
+| Is the **reply** right and useful?                         | Says "Done!" but the tool returned an error. Or answers the question it was not asked. | Judge model (Part 3)                        |
+| Is it **safe**?                                            | Helps with an off-topic or harmful request.                                            | Judge model with a safety evaluator         |
 
 > 💡 **AWS comparison:** this is like the difference between a **unit test** and a **canary** in CodeDeploy. You don't check one exact output; you check that error rates stay below a threshold. Evaluation does the same for answer quality.
 
@@ -97,15 +97,15 @@ You score what's happening in production, continuously. Because real traffic has
 
 ### Side by side
 
-| | Offline | Online |
-|---|---|---|
-| When | Before release (CI/CD) | After release (production) |
-| Data | Fixed test set you wrote | Real user traffic |
-| Expected answer known? | Yes | No |
-| Catches | Regressions from your changes | New question types, drift, real-world failures |
-| Action when it fails | Block the deploy | Alert, investigate, roll back |
-| Cost | Small, fixed (25 cases per deploy) | Grows with traffic, so you sample |
-| DevOps equivalent | Integration test stage | Monitoring and alerts |
+|                        | Offline                            | Online                                         |
+| ---------------------- | ---------------------------------- | ---------------------------------------------- |
+| When                   | Before release (CI/CD)             | After release (production)                     |
+| Data                   | Fixed test set you wrote           | Real user traffic                              |
+| Expected answer known? | Yes                                | No                                             |
+| Catches                | Regressions from your changes      | New question types, drift, real-world failures |
+| Action when it fails   | Block the deploy                   | Alert, investigate, roll back                  |
+| Cost                   | Small, fixed (25 cases per deploy) | Grows with traffic, so you sample              |
+| DevOps equivalent      | Integration test stage             | Monitoring and alerts                          |
 
 ### How they feed each other (the loop interviewers like)
 
@@ -159,14 +159,14 @@ The **evaluator** is that prompt plus the code that parses the score. You run it
 
 You rarely write the judge prompt yourself. Foundry ships ready-made evaluators. These are the ones that matter for an agent like ours:
 
-| Evaluator | Question it answers | Example failure it catches |
-|---|---|---|
-| **Intent resolution** | Did the agent understand what the user wanted? | User said "I finished X", agent thought they wanted to add X. |
-| **Task adherence** | Did it follow its instructions and finish the task? | Deleted without confirming when the instructions say to confirm "delete everything". |
-| **Tool call accuracy** | Were the right tools called with the right arguments? | Called `delete_todo_item` instead of `complete_todo_item`. Guessed an ID. |
-| **Relevance** | Does the reply answer the question asked? | Lists the whole todo list when asked to add one item. |
-| **Coherence / fluency** | Is the reply clear and readable? | Rambling, contradictory reply. |
-| **Safety** (violence, hate, self-harm, etc.) | Is anything harmful in the reply? | Agent produced harmful content when pushed. |
+| Evaluator                                    | Question it answers                                   | Example failure it catches                                                           |
+| -------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Intent resolution**                        | Did the agent understand what the user wanted?        | User said "I finished X", agent thought they wanted to add X.                        |
+| **Task adherence**                           | Did it follow its instructions and finish the task?   | Deleted without confirming when the instructions say to confirm "delete everything". |
+| **Tool call accuracy**                       | Were the right tools called with the right arguments? | Called `delete_todo_item` instead of `complete_todo_item`. Guessed an ID.            |
+| **Relevance**                                | Does the reply answer the question asked?             | Lists the whole todo list when asked to add one item.                                |
+| **Coherence / fluency**                      | Is the reply clear and readable?                      | Rambling, contradictory reply.                                                       |
+| **Safety** (violence, hate, self-harm, etc.) | Is anything harmful in the reply?                     | Agent produced harmful content when pushed.                                          |
 
 The first three are the **agent-specific** ones. Relevance, coherence and safety apply to any chatbot.
 
@@ -174,13 +174,13 @@ The first three are the **agent-specific** ones. Relevance, coherence and safety
 
 Interviewers will ask this. Honest answer: **you trust it only after you've checked it**.
 
-| Weakness | What you do about it |
-|---|---|
-| The judge can be wrong, too. | **Calibrate:** grade 20–30 cases by hand, run the judge on the same cases, and check they mostly agree. If not, fix the rubric. |
-| Scores vary from run to run. | Use a strong model as judge, temperature 0 where possible, a clear 1–5 rubric with an example per score, and ask for the reason **before** the score. |
-| Judges tend to like long answers and answers that sound confident. | Rubric says "length does not matter; a short correct answer scores 5". |
-| A judge grading its own model's output may go easy on it. | Use a different (usually larger) model as the judge than the agent's model. Our agent uses `gpt-5-mini`; the judge should be a stronger model. |
-| It costs tokens: every case is an extra model call, sometimes several. | Fine for 25 cases per deploy. In production, sample (e.g. 5%), don't judge everything. |
+| Weakness                                                               | What you do about it                                                                                                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The judge can be wrong, too.                                           | **Calibrate:** grade 20–30 cases by hand, run the judge on the same cases, and check they mostly agree. If not, fix the rubric.                       |
+| Scores vary from run to run.                                           | Use a strong model as judge, temperature 0 where possible, a clear 1–5 rubric with an example per score, and ask for the reason **before** the score. |
+| Judges tend to like long answers and answers that sound confident.     | Rubric says "length does not matter; a short correct answer scores 5".                                                                                |
+| A judge grading its own model's output may go easy on it.              | Use a different (usually larger) model as the judge than the agent's model. Our agent uses `gpt-5-mini`; the judge should be a stronger model.        |
+| It costs tokens: every case is an extra model call, sometimes several. | Fine for 25 cases per deploy. In production, sample (e.g. 5%), don't judge everything.                                                                |
 
 > 💡 **The key point for the interview:** a judge model is a **measuring instrument**, and like any instrument you calibrate it before you trust its readings.
 
@@ -215,23 +215,23 @@ The agent's reply text doesn't matter at all here. This is the agent equivalent 
 
 ### What state checks catch that judges miss
 
-| Prompt | Agent's reply | Judge model says | State check says |
-|---|---|---|---|
-| "I finished buy milk" | "Done!" | ✅ 5/5, sounds right | ❌ item was **deleted**, not completed |
-| "Add buy milk" | "Added buy milk." | ✅ 5/5 | ❌ two items were added (it called the tool twice) |
-| "Delete call mum" | "Deleted call mum." | ✅ 5/5 | ❌ wrong item deleted: ID 1 instead of ID 2 |
-| "Delete everything" | "Are you sure? This will delete 2 items." | ✅ 5/5 | ✅ list unchanged, as the instructions require |
+| Prompt                | Agent's reply                             | Judge model says     | State check says                                   |
+| --------------------- | ----------------------------------------- | -------------------- | -------------------------------------------------- |
+| "I finished buy milk" | "Done!"                                   | ✅ 5/5, sounds right | ❌ item was **deleted**, not completed             |
+| "Add buy milk"        | "Added buy milk."                         | ✅ 5/5               | ❌ two items were added (it called the tool twice) |
+| "Delete call mum"     | "Deleted call mum."                       | ✅ 5/5               | ❌ wrong item deleted: ID 1 instead of ID 2        |
+| "Delete everything"   | "Are you sure? This will delete 2 items." | ✅ 5/5               | ✅ list unchanged, as the instructions require     |
 
 The first three are the exact silent failures Day 4 worried about. Only the state check sees them.
 
 ### Strengths and limits
 
-| Strengths | Limits |
-|---|---|
-| **Exact:** pass/fail, no judgment involved. | Only works when the agent **changes something you can read** (a database, a ticket, a file). |
-| **Free:** no judge model, no extra tokens. | Says nothing about the reply's quality: a correct action with a rude or confusing reply still passes. |
-| **Can't be fooled** by a confident-sounding reply. | Needs **test isolation**: a clean starting state for each test (see below). |
-| Easy to explain: it's just an integration test. | Can't handle "many correct answers" well: if the user says "add milk", is "milk" or "Milk" correct? Write the check loosely (case-insensitive, contains). |
+| Strengths                                          | Limits                                                                                                                                                    |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Exact:** pass/fail, no judgment involved.        | Only works when the agent **changes something you can read** (a database, a ticket, a file).                                                              |
+| **Free:** no judge model, no extra tokens.         | Says nothing about the reply's quality: a correct action with a rude or confusing reply still passes.                                                     |
+| **Can't be fooled** by a confident-sounding reply. | Needs **test isolation**: a clean starting state for each test (see below).                                                                               |
+| Easy to explain: it's just an integration test.    | Can't handle "many correct answers" well: if the user says "add milk", is "milk" or "Milk" correct? Write the check loosely (case-insensitive, contains). |
 
 ### The isolation problem in our project (a real DevOps issue)
 
@@ -248,13 +248,13 @@ For today: run state checks only against the **dev** environment, one test at a 
 
 None of the three is enough alone. A real setup uses all of them, each for what it's good at:
 
-| Check | Answers | Where it runs | Cost |
-|---|---|---|---|
-| **State check** | Did it *do* the right thing? | Offline (CI, against dev) | Free, exact |
-| **Tool-call check** (from traces) | Did it take the right *steps*? | Offline and online | Free (just a KQL query) |
-| **Judge model** | Did it *say* the right thing, safely? | Offline (every case) and online (sampled) | Tokens per case |
-| **Trace signals** (error rate, loops) | Is something broken *right now*? | Online | Free |
-| **User feedback** | Do users think it was right? | Online | Free, but slow and sparse |
+| Check                                 | Answers                               | Where it runs                             | Cost                      |
+| ------------------------------------- | ------------------------------------- | ----------------------------------------- | ------------------------- |
+| **State check**                       | Did it *do* the right thing?          | Offline (CI, against dev)                 | Free, exact               |
+| **Tool-call check** (from traces)     | Did it take the right *steps*?        | Offline and online                        | Free (just a KQL query)   |
+| **Judge model**                       | Did it *say* the right thing, safely? | Offline (every case) and online (sampled) | Tokens per case           |
+| **Trace signals** (error rate, loops) | Is something broken *right now*?      | Online                                    | Free                      |
+| **User feedback**                     | Do users think it was right?          | Online                                    | Free, but slow and sparse |
 
 ### What the pipeline gate looks like
 
@@ -280,11 +280,12 @@ Why the different thresholds? State checks are exact, so any failure is a real b
 
 ## Part 6: What we built
 
-The step-by-step plan is in [day-05-evaluation-implementation-plan.md](day-05-evaluation-implementation-plan.md).
+The step-by-step plan is in [day-05-evaluation-implementation-plan.md](day-05-evaluation-implementation-plan.md). For a DevOps walkthrough of the state checks and how enterprises run them, see [day-05-state-checks-explained.md](day-05-state-checks-explained.md). For the judge evaluators, see [day-05-judge-evaluators.md](day-05-judge-evaluators.md).
 
 - [x] Step 0: judge model, pipeline role, tool versions.
 - [x] Part A: state-check tests that talk to the agent and to the MCP server directly.
-- [ ] Part B: test set and judge evaluators (`azd ai agent eval`).
+- [x] Part B: test set and judge evaluators (`azd ai eval`, which replaced `azd ai agent eval`). 28 reviewed cases, a custom policy rubric calibrated at 27/27 agreement, two real agent bugs found. Details in [day-05-judge-evaluators.md](day-05-judge-evaluators.md).
+- [x] Part C: quality signals from traces: six KQL queries in [docs/kql/agent-quality.kql](../kql/agent-quality.kql), built on the MCP server's spans; found the #7 bulk delete in production-style traffic and a sampling gap. Details in [day-05-quality-signals.md](day-05-quality-signals.md).
 - [ ] Part E: pipeline step after stage 2 that fails the deploy when checks fail.
 
 ### Step 0: Getting the platform ready
@@ -327,18 +328,18 @@ Assert   TodoStateClient → MCP server:  get_todo_items → is 'buy milk' compl
 
 **Design decisions, from a DevOps point of view:**
 
-| Decision | Why |
-|---|---|
-| **Call Foundry directly, not the gateway** | The gate runs after stage 2, before stage 3 deploys the gateway. On a fresh environment the gateway doesn't exist yet. Same library as the gateway (`ProjectOpenAIClient`), so it's the same path minus one hop. |
-| **Assert on the list, never on the reply text** | Many replies are correct. The list's final state is a fact. |
-| **Loose text checks** ("contains milk", case-insensitive) | The model may write "Buy milk" or "buy milk". Check meaning, not spelling. |
-| **All settings from environment variables** | The same command runs on a laptop and in GitHub Actions. That's [12-factor](https://12factor.net/config) config, same as the apps. |
-| **Missing settings fail the run; they don't skip it** | A skipped gate looks green but proves nothing. Fail closed, like the MCP API key on Day 2. |
-| **MCP key read from Key Vault at test time** | No secret in GitHub, in a file, or in test code. The test runs as you locally, or as the pipeline in CI; both already have vault access. |
-| **Each case runs until 2 passes or 2 fails** (max 3 runs) | The model is not deterministic. One wobble shouldn't fail a deploy; a real regression fails every run. |
-| **An agent error is not a quality result** | See the 429 story below. Errors are retried after a pause and, if they persist, the test fails with an `INFRASTRUCTURE:` label, so on-call knows it's capacity, not prompts. |
-| **Tests run one at a time** (`xunit.runner.json`) | One shared in-memory list. Two tests at once would wipe each other's data. |
-| **Exit code 2 on failure** | That's what makes a pipeline step go red. Nothing else is needed for the gate. |
+| Decision                                                  | Why                                                                                                                                                                                                              |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Call Foundry directly, not the gateway**                | The gate runs after stage 2, before stage 3 deploys the gateway. On a fresh environment the gateway doesn't exist yet. Same library as the gateway (`ProjectOpenAIClient`), so it's the same path minus one hop. |
+| **Assert on the list, never on the reply text**           | Many replies are correct. The list's final state is a fact.                                                                                                                                                      |
+| **Loose text checks** ("contains milk", case-insensitive) | The model may write "Buy milk" or "buy milk". Check meaning, not spelling.                                                                                                                                       |
+| **All settings from environment variables**               | The same command runs on a laptop and in GitHub Actions. That's [12-factor](https://12factor.net/config) config, same as the apps.                                                                               |
+| **Missing settings fail the run; they don't skip it**     | A skipped gate looks green but proves nothing. Fail closed, like the MCP API key on Day 2.                                                                                                                       |
+| **MCP key read from Key Vault at test time**              | No secret in GitHub, in a file, or in test code. The test runs as you locally, or as the pipeline in CI; both already have vault access.                                                                         |
+| **Each case runs until 2 passes or 2 fails** (max 3 runs) | The model is not deterministic. One wobble shouldn't fail a deploy; a real regression fails every run.                                                                                                           |
+| **An agent error is not a quality result**                | See the 429 story below. Errors are retried after a pause and, if they persist, the test fails with an `INFRASTRUCTURE:` label, so on-call knows it's capacity, not prompts.                                     |
+| **Tests run one at a time** (`xunit.runner.json`)         | One shared in-memory list. Two tests at once would wipe each other's data.                                                                                                                                       |
+| **Exit code 2 on failure**                                | That's what makes a pipeline step go red. Nothing else is needed for the gate.                                                                                                                                   |
 
 **Running it:**
 
@@ -395,14 +396,14 @@ The restore didn't work straight away. The MCP server served the fixed descripti
 
 App Insights explained it. On the MCP server, over ~15 minutes there were dozens of `initialize` calls but only a handful of `tools/list` calls:
 
-| Time (UTC) | What happened |
-|---|---|
-| 03:38 | Foundry fetches `tools/list` (good descriptions) |
-| ~03:53 | Broken description deployed. **Tests still pass**: Foundry is using its cached good list |
-| 03:55 | Foundry fetches `tools/list` again, gets the **broken** list. Deletes start |
-| 03:58 | Good description restored on the MCP server |
-| 03:59–04:10 | Agent **still deletes**, including on a new agent version |
-| ~04:11 | Cache refreshed, agent sees the good description. Suite: 8/8 |
+| Time (UTC)  | What happened                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| 03:38       | Foundry fetches `tools/list` (good descriptions)                                         |
+| ~03:53      | Broken description deployed. **Tests still pass**: Foundry is using its cached good list |
+| 03:55       | Foundry fetches `tools/list` again, gets the **broken** list. Deletes start              |
+| 03:58       | Good description restored on the MCP server                                              |
+| 03:59–04:10 | Agent **still deletes**, including on a new agent version                                |
+| ~04:11      | Cache refreshed, agent sees the good description. Suite: 8/8                             |
 
 So Foundry **caches the MCP tool list for roughly 10–15 minutes** (our measurement; the exact time isn't documented), keyed to the MCP server rather than the agent version. This corrects the Day 4 notes, which assumed the list was fetched on every request.
 
@@ -431,30 +432,30 @@ Several passing runs had replies like *"Done — I deleted the item."* The instr
 
 **Follow-ups to be ready for:**
 
-| Question | Short answer |
-|---|---|
-| "Why not just use a judge for everything?" | It only reads text. It can't see that the agent deleted instead of completed if the reply says "Done". State checks can. |
-| "Why not just state checks?" | They say nothing about the reply's quality or safety, and they only work when there's state to read. |
-| "The model gives different answers each run. Isn't your gate flaky?" | Score many cases and gate on a rate, not on one answer. Use thresholds with a margin, or compare to the previous version's score. Run flaky cases 3 times and take the majority. |
-| "What triggers a re-evaluation besides a code change?" | A prompt or tool description change, a model version update, switching models, or a new MCP tool. All of them change behaviour without changing C# code, so all of them must go through the gate. |
-| "How do you evaluate in prod without the right answers?" | Judges on a sample, trace signals, user feedback, and production failures turned into offline cases. |
+| Question                                                             | Short answer                                                                                                                                                                                      |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Why not just use a judge for everything?"                           | It only reads text. It can't see that the agent deleted instead of completed if the reply says "Done". State checks can.                                                                          |
+| "Why not just state checks?"                                         | They say nothing about the reply's quality or safety, and they only work when there's state to read.                                                                                              |
+| "The model gives different answers each run. Isn't your gate flaky?" | Score many cases and gate on a rate, not on one answer. Use thresholds with a margin, or compare to the previous version's score. Run flaky cases 3 times and take the majority.                  |
+| "What triggers a re-evaluation besides a code change?"               | A prompt or tool description change, a model version update, switching models, or a new MCP tool. All of them change behaviour without changing C# code, so all of them must go through the gate. |
+| "How do you evaluate in prod without the right answers?"             | Judges on a sample, trace signals, user feedback, and production failures turned into offline cases.                                                                                              |
 
 ---
 
 ## Glossary
 
-| Term | Meaning |
-|---|---|
-| **Evaluation (eval)** | Scoring an agent's behaviour on many cases, rather than one pass/fail test. |
-| **Test set / golden dataset** | The fixed list of prompts and expected results used for offline evaluation. |
-| **Offline evaluation** | Scoring before release, on the test set. Runs in CI/CD. |
-| **Online evaluation** | Scoring after release, on real traffic. Runs continuously, usually on a sample. |
-| **Evaluator** | Something that scores one result: a judge prompt, a state check, or a rule. |
-| **Judge model / LLM-as-a-judge** | A model asked to grade another model's output against a rubric. |
-| **Rubric** | The grading instructions given to a judge: what a 1, 3 or 5 looks like. |
-| **Calibration** | Checking that a judge's scores agree with human grades before trusting it. |
-| **State-based check** | Checking the system's state (our to-do list) after the agent acts, instead of its reply. |
-| **Pass rate** | The share of test cases that passed. What the pipeline gate checks. |
-| **Regression** | Something that used to work and now doesn't, after a change. |
-| **Drift** | Quality slowly changing over time with no change on your side, e.g. after a model update or as user questions change. |
-| **Quality gate** | A pipeline step that stops the deploy when the pass rate is below the threshold. |
+| Term                             | Meaning                                                                                                               |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Evaluation (eval)**            | Scoring an agent's behaviour on many cases, rather than one pass/fail test.                                           |
+| **Test set / golden dataset**    | The fixed list of prompts and expected results used for offline evaluation.                                           |
+| **Offline evaluation**           | Scoring before release, on the test set. Runs in CI/CD.                                                               |
+| **Online evaluation**            | Scoring after release, on real traffic. Runs continuously, usually on a sample.                                       |
+| **Evaluator**                    | Something that scores one result: a judge prompt, a state check, or a rule.                                           |
+| **Judge model / LLM-as-a-judge** | A model asked to grade another model's output against a rubric.                                                       |
+| **Rubric**                       | The grading instructions given to a judge: what a 1, 3 or 5 looks like.                                               |
+| **Calibration**                  | Checking that a judge's scores agree with human grades before trusting it.                                            |
+| **State-based check**            | Checking the system's state (our to-do list) after the agent acts, instead of its reply.                              |
+| **Pass rate**                    | The share of test cases that passed. What the pipeline gate checks.                                                   |
+| **Regression**                   | Something that used to work and now doesn't, after a change.                                                          |
+| **Drift**                        | Quality slowly changing over time with no change on your side, e.g. after a model update or as user questions change. |
+| **Quality gate**                 | A pipeline step that stops the deploy when the pass rate is below the threshold.                                      |
