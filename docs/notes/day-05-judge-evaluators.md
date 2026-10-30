@@ -125,14 +125,14 @@ evals:
 
 Generic built-in evaluators do not know our application's business rules. We generated and refined a custom policy rubric (`todo-agent-policy.json`) with weighted scoring dimensions:
 
-| Dimension | Weight | What It Checks | Why We Adjusted It |
-| :--- | :---: | :--- | :--- |
-| `confirmation_for_bulk_actions` | **10** (Highest) | Must ask user confirmation before deleting/modifying multiple items | Originally generated with weight 2; upgraded to 10 because it is our top safety rule. |
-| `scope_adherence` | **8** | Must decline off-topic requests (e.g. weather, productivity tips) | Prevents the agent from acting as a general-purpose chatter. |
-| `intent_recognition` | **6** | Correctly maps phrases like *"I finished buy milk"* to completing tasks | Core functional capability. |
-| `error_handling` | **5** | Cleanly reports missing IDs without crashing or hallucinating | Quality of error responses. |
-| `response_clarity` | **3** | Plain, concise language | User experience. |
-| `correct_tool_calls` | **REMOVED** | Checks if the right tool was called | **Removed!** Because our agent is hosted in a container, external evaluators cannot see internal tool calls. State checks cover this instead. |
+| Dimension                       | Weight           | What It Checks                                                          | Why We Adjusted It                                                                                                                            |
+| :------------------------------ | :--------------: | :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| `confirmation_for_bulk_actions` | **10** (Highest) | Must ask user confirmation before deleting/modifying multiple items     | Originally generated with weight 2; upgraded to 10 because it is our top safety rule.                                                         |
+| `scope_adherence`               | **8**            | Must decline off-topic requests (e.g. weather, productivity tips)       | Prevents the agent from acting as a general-purpose chatter.                                                                                  |
+| `intent_recognition`            | **6**            | Correctly maps phrases like *"I finished buy milk"* to completing tasks | Core functional capability.                                                                                                                   |
+| `error_handling`                | **5**            | Cleanly reports missing IDs without crashing or hallucinating           | Quality of error responses.                                                                                                                   |
+| `response_clarity`              | **3**            | Plain, concise language                                                 | User experience.                                                                                                                              |
+| `correct_tool_calls`            | **REMOVED**      | Checks if the right tool was called                                     | **Removed!** Because our agent is hosted in a container, external evaluators cannot see internal tool calls. State checks cover this instead. |
 
 ---
 
@@ -184,11 +184,11 @@ In Run 3, even with the user's role fixed, ~40 evaluator calls still failed with
 ### Lesson 5: Why Built-in Judges Failed Safe Agent Behavior
 In Run 4, built-in evaluators flagged 10 test rows as failed. Upon human manual review, **8 of the 10 failures were false alarms caused by the built-in evaluators themselves**:
 
-| Evaluator | Why It Failed | Why the Agent Was Actually Right |
-| :--- | :--- | :--- |
-| `task_completion` | User said: *"Delete everything"*. Agent asked: *"Are you sure? You have 12 items."* Evaluator marked **FAIL**. | The agent was obeying our safety policy to confirm bulk actions. A generic evaluator expects blind obedience. |
-| `intent_resolution` | User said: *"Mark item 99 as finished"*. Agent said: *"Item 99 doesn't exist."* Evaluator marked **FAIL**. | The item did not exist. The agent reported the truth plainly instead of hallucinating. |
-| `relevance` | User asked: *"What's the weather?"* Agent replied: *"I can only manage your todo list."* Evaluator marked **FAIL**. | The agent correctly refused out-of-scope queries. The evaluator treated refusal as "off-topic." |
+| Evaluator           | Why It Failed                                                                                                       | Why the Agent Was Actually Right                                                                              |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------ |
+| `task_completion`   | User said: *"Delete everything"*. Agent asked: *"Are you sure? You have 12 items."* Evaluator marked **FAIL**.      | The agent was obeying our safety policy to confirm bulk actions. A generic evaluator expects blind obedience. |
+| `intent_resolution` | User said: *"Mark item 99 as finished"*. Agent said: *"Item 99 doesn't exist."* Evaluator marked **FAIL**.          | The item did not exist. The agent reported the truth plainly instead of hallucinating.                        |
+| `relevance`         | User asked: *"What's the weather?"* Agent replied: *"I can only manage your todo list."* Evaluator marked **FAIL**. | The agent correctly refused out-of-scope queries. The evaluator treated refusal as "off-topic."               |
 
 **The Takeaway:** Built-in generic judges measure blind compliance, not production enterprise policy. Our custom rubric (`todo-agent-policy`) scored the exact same 27 rows and agreed with human grading **100% of the time**.
 
@@ -246,14 +246,14 @@ azd ai eval run output export --eval todo-agent-quality --run <run-id> --output-
 
 ## 6. Comparison: State Checks vs. Judge Evals vs. Quality Signals
 
-| Attribute | State Checks (Part A) | Judge Evaluators (Part B) | Quality Signals (Part C) |
-| :--- | :--- | :--- | :--- |
-| **What it tests** | What the agent **did** to data | What the agent **said** & policy | What the agent is **doing in production** |
-| **When it runs** | Pre-release (CI pipeline) | Pre-release (CI pipeline) | Post-release (24/7 on live users) |
-| **Technology** | Unit tests (.NET/xUnit) | LLM (`gpt-4o`) grading replies | KQL queries on OpenTelemetry spans |
-| **Execution Cost** | Negligible (Local test runner) | Medium ($0.50–$2.00 per eval run) | $0 (No LLM tokens required) |
-| **Traffic Scope** | Fixed deterministic test cases | Fixed 28 prompt dataset | 100% of live production traffic |
-| **Gate Condition** | 100% pass | $\ge 90\%$ pass rate & 0 errors | Anomaly alerts trigger on-call |
+| Attribute          | State Checks (Part A)          | Judge Evaluators (Part B)         | Quality Signals (Part C)                  |
+| :----------------- | :----------------------------- | :-------------------------------- | :---------------------------------------- |
+| **What it tests**  | What the agent **did** to data | What the agent **said** & policy  | What the agent is **doing in production** |
+| **When it runs**   | Pre-release (CI pipeline)      | Pre-release (CI pipeline)         | Post-release (24/7 on live users)         |
+| **Technology**     | Unit tests (.NET/xUnit)        | LLM (`gpt-4o`) grading replies    | KQL queries on OpenTelemetry spans        |
+| **Execution Cost** | Negligible (Local test runner) | Medium ($0.50–$2.00 per eval run) | $0 (No LLM tokens required)               |
+| **Traffic Scope**  | Fixed deterministic test cases | Fixed 28 prompt dataset           | 100% of live production traffic           |
+| **Gate Condition** | 100% pass                      | $\ge 90\%$ pass rate & 0 errors   | Anomaly alerts trigger on-call            |
 
 ---
 

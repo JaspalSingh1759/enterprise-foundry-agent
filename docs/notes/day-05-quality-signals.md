@@ -2,7 +2,7 @@
 
 Part C of the [Day 5 plan](day-05-evaluation-implementation-plan.md). Parts A and B test the agent **before** release with prompts we wrote. Part C watches what the agent **actually does in production**, on every request, with no test prompts, no expected answers and no model calls. It's just queries over telemetry we already collect.
 
-The queries are in [docs/kql/agent-quality.kql](../kql/agent-quality.kql). Day 6 turns them into alerts. For how this works in a real project (pipeline delivery, marking test traffic, checking it in the portals), see [day-05-quality-signals-in-practice.md](day-05-quality-signals-in-practice.md). For a simplified, comprehensive AI DevOps overview and portal verification guide, see [day-05-quality-signals-explained.md](day-05-quality-signals-explained.md).
+The queries are in [docs/kql/agent-quality.kql](../kql/agent-quality.kql). Day 12 turns them into alerts. For how this works in a real project (pipeline delivery, marking test traffic, checking it in the portals), see [day-05-quality-signals-in-practice.md](day-05-quality-signals-in-practice.md). For a simplified, comprehensive AI DevOps overview and portal verification guide, see [day-05-quality-signals-explained.md](day-05-quality-signals-explained.md).
 
 ---
 
@@ -69,7 +69,7 @@ Checked on 2 days of data: `update_todo_item` (which only the agent ever calls) 
 
 ## Part 3: The six queries
 
-Each query stands alone (it repeats the shared filter), because Day 6 turns each one into an alert rule.
+Each query stands alone (it repeats the shared filter), because Day 12 turns each one into an alert rule.
 
 | #   | Signal                                  | What "bad" looks like                                                                    | Result on our last 2 days                                      |
 | --- | --------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -148,7 +148,7 @@ The plan's **refusal rate** signal couldn't be built for the first reason. It's 
 
 ---
 
-## Part 6: How Day 6 will use these
+## Part 6: How Day 12 will use these
 
 | Query               | Alert idea                                                  | Severity                                  |
 | ------------------- | ----------------------------------------------------------- | ----------------------------------------- |

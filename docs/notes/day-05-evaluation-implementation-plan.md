@@ -16,7 +16,7 @@ How we'll add offline evaluation, online evaluation, judge-model evaluators and 
                         └─────────────────────────────────────────────────────────────────────────┘
 
                         ┌──────────────────── ONLINE (production, all the time) ─────────────────┐
-                        │  traces in App Insights ──▶ C. KQL quality signals ──▶ alerts (Day 6)  │
+                        │  traces in App Insights ──▶ C. KQL quality signals ──▶ alerts (Day 12)  │
                         │  live traffic sample    ──▶ D. judge on a sample   ──▶ dashboard       │
                         │  bad real conversation  ──▶ E. added to the test set (feedback loop)   │
                         └─────────────────────────────────────────────────────────────────────────┘
@@ -189,7 +189,7 @@ Results also show up in the Foundry portal under the project's **Evaluations**, 
 ### C.1 Steps
 
 1. Write each query and save them in `docs/kql/agent-quality.kql`, tested against the Day 4 test traffic.
-2. Day 6 turns them into alert rules in Bicep (`scheduledQueryRules`). The alert design belongs to Day 6; today we only write and test the queries.
+2. Day 12 turns them into alert rules in Bicep (`scheduledQueryRules`). The alert design belongs to Day 12; today we only write and test the queries.
 
 ### C.2 Done when
 
@@ -210,7 +210,7 @@ Results also show up in the Foundry portal under the project's **Evaluations**, 
    - reads yesterday's conversations from App Insights (prompt, tool calls, reply),
    - samples 5% (capped at, say, 50 conversations to control cost),
    - turns them into a dataset and runs the same evaluators with `--dataset`,
-   - posts the scores to App Insights as a custom metric, so Day 6 can chart and alert on it.
+   - posts the scores to App Insights as a custom metric, so Day 12 can chart and alert on it.
 
 ### D.2 Privacy check (before any of this)
 
@@ -262,7 +262,7 @@ Foundry caches the MCP tool list for roughly 10–15 minutes (Day 5 notes, Part 
 
 - It **stops stage 3**, so the web UI and gateway aren't redeployed.
 - It **doesn't undo stage 2**: the new agent version is already live in that environment, because stage 2 deployed it. In dev that's fine; that's what dev is for.
-- For staging and prod, this matters. The real fix is environment promotion (Day 8): evaluate in dev, then promote the **same** version, and roll back to the previous agent version on failure.
+- For staging and prod, this matters. The real fix is environment promotion (Day 14): evaluate in dev, then promote the **same** version, and roll back to the previous agent version on failure.
 
 ### E.3 When the gate must run
 
@@ -309,7 +309,7 @@ Written into the Day 5 notes as the team's working rule: **"no prod failure is f
 | 2     | A: state checks ✅ done (8/8 passing; proved it fails on a broken description)                                                | Medium  | Exact and free; catches the worst failures; no judge needed |
 | 3     | B: test set + judge evaluators ✅ done (policy rubric calibrated 27/27; built-in judges report-only; bugs #7 and #15 found)   | Medium  | Needs the judge model; reviewing the set takes the time     |
 | 4     | E: CI gate                                                                                                                    | Small   | Wires A and B into the pipeline                             |
-| 5     | C: KQL signals ✅ done (6 queries on the MCP server's spans; refusal rate not possible without Foundry spans; sampling fixed) | Small   | Queries only; Day 6 turns them into alerts                  |
+| 5     | C: KQL signals ✅ done (6 queries on the MCP server's spans; refusal rate not possible without Foundry spans; sampling fixed) | Small   | Queries only; Day 12 turns them into alerts                 |
 | 6     | D: online judge                                                                                                               | Medium  | Depends on what Foundry supports for hosted agents          |
 | 7     | F: the feedback loop                                                                                                          | Writing | Write the rule into the notes                               |
 

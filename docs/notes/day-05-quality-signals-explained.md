@@ -15,10 +15,10 @@ In AI Agent systems, **an agent can return HTTP 200 with a polite response while
 
 ### The Two Layers of Production Monitoring
 
-| Monitoring Layer | How It Works | Cost & Speed | Coverage | Example |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Trace Signals (This Guide)** | KQL queries scanning OpenTelemetry spans already logged to Application Insights. | **Free** (No LLM tokens), near real-time. | **100%** of all real user requests. | *"This turn ran 9 tool calls and deleted 4 items."* |
-| **2. Online LLM Judge** | An LLM reads the user's prompt and agent's text response. | **Expensive** (costs LLM tokens), slower. | **Sampled** (e.g., 2%–5% of traffic). | *"The tone was unprofessional or out of scope."* |
+| Monitoring Layer                  | How It Works                                                                     | Cost & Speed                              | Coverage                              | Example                                             |
+| :-------------------------------- | :------------------------------------------------------------------------------- | :---------------------------------------- | :------------------------------------ | :-------------------------------------------------- |
+| **1. Trace Signals (This Guide)** | KQL queries scanning OpenTelemetry spans already logged to Application Insights. | **Free** (No LLM tokens), near real-time. | **100%** of all real user requests.   | *"This turn ran 9 tool calls and deleted 4 items."* |
+| **2. Online LLM Judge**           | An LLM reads the user's prompt and agent's text response.                        | **Expensive** (costs LLM tokens), slower. | **Sampled** (e.g., 2%–5% of traffic). | *"The tone was unprofessional or out of scope."*    |
 
 > **The Core Idea:** You don't know the exact answer the user was expecting, but you **know bad behavioural patterns**. Trace-based Quality Signals detect these bad patterns on **every single request** without spending a single cent on LLM evaluation tokens.
 

@@ -285,14 +285,14 @@ jobs:
 
 ## 7. Comparison Matrix: Methods to Segregate Traffic
 
-| Technique | How It Works | Strengths | Weaknesses |
-| :--- | :--- | :--- | :--- |
-| **IP Whitelisting** | Filter out runner IP addresses | Simple initial setup | ❌ **Flawed for cloud/DevOps**: CI runners have dynamic IPs. |
-| **Time Windows** | "Ignore 02:00–02:15 AM" | No code changes | ❌ **Flawed**: Delayed test runs trigger real production incidents. |
-| **Inferred Call Shape** | e.g., missing parent trace ID | No client changes | ⚠️ **Fragile**: Breaks as soon as call topology changes. |
-| **Custom Header (`x-test-run`)** | Test client adds `x-test-run: id` | Easy to add to cURL / scripts | ⚠️ Only persists if downstream microservices explicitly forward it. |
-| **W3C Baggage (`baggage`)** | Standard OTel header | ✅ **Gold standard**: Propagates automatically across microservices. | Requires OTel SDK configured to propagate baggage context. |
-| **Dedicated Test Identity** | Tests use dedicated App Registration / Service Principal | ✅ **Secure**: Cannot be spoofed by real users in request headers. | Requires setting up RBAC & separate auth credentials. |
+| Technique                        | How It Works                                             | Strengths                                                            | Weaknesses                                                          |
+| :------------------------------- | :------------------------------------------------------- | :------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| **IP Whitelisting**              | Filter out runner IP addresses                           | Simple initial setup                                                 | ❌ **Flawed for cloud/DevOps**: CI runners have dynamic IPs.        |
+| **Time Windows**                 | "Ignore 02:00–02:15 AM"                                  | No code changes                                                      | ❌ **Flawed**: Delayed test runs trigger real production incidents. |
+| **Inferred Call Shape**          | e.g., missing parent trace ID                            | No client changes                                                    | ⚠️ **Fragile**: Breaks as soon as call topology changes.            |
+| **Custom Header (`x-test-run`)** | Test client adds `x-test-run: id`                        | Easy to add to cURL / scripts                                        | ⚠️ Only persists if downstream microservices explicitly forward it. |
+| **W3C Baggage (`baggage`)**      | Standard OTel header                                     | ✅ **Gold standard**: Propagates automatically across microservices. | Requires OTel SDK configured to propagate baggage context.          |
+| **Dedicated Test Identity**      | Tests use dedicated App Registration / Service Principal | ✅ **Secure**: Cannot be spoofed by real users in request headers.   | Requires setting up RBAC & separate auth credentials.               |
 
 ---
 

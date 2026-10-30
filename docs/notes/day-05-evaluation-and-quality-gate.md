@@ -84,7 +84,7 @@ You score what's happening in production, continuously. Because real traffic has
                      ▼                  ▼                  ▼
               judge 5% sample    tool error rate     thumbs down %
                      │                  │                  │
-                     └──────▶ dashboard + alert (Day 6) ◀──┘
+                     └──────▶ dashboard + alert (Day 12) ◀──┘
                               "quality score dropped 15% today"
 ```
 
@@ -373,7 +373,7 @@ msg=Model deployment rate limit exceeded. Your requests to gpt-5-mini ... have e
 1. **Capacity 10 → 100** in `azure.yaml` (quota allowed 1000). Pay-per-token, so no idle cost. The final run had zero 429s.
 2. **The tests tell errors apart from wrong answers** (`AgentRunFailedException`). Before this, a capacity problem looked exactly like a prompt regression.
 
-> 💡 **Interview point:** *"Our first eval failures were actually 429s. The agent's tool loop got rate-limited half-way and left the data half-changed. So the eval harness has to separate 'the agent ran and was wrong' from 'the agent couldn't run'. Otherwise a capacity problem gets blamed on the prompt, or worse, a prompt regression gets dismissed as flakiness. And it showed our TPM was sized for one chat user, not for a test burst."* This also applies to production: **429s inside a tool loop can leave real data half-changed.** That's an alert for Day 6.
+> 💡 **Interview point:** *"Our first eval failures were actually 429s. The agent's tool loop got rate-limited half-way and left the data half-changed. So the eval harness has to separate 'the agent ran and was wrong' from 'the agent couldn't run'. Otherwise a capacity problem gets blamed on the prompt, or worse, a prompt regression gets dismissed as flakiness. And it showed our TPM was sized for one chat user, not for a test burst."* This also applies to production: **429s inside a tool loop can leave real data half-changed.** That's an alert for Day 12.
 
 #### 2. Breaking it on purpose: the gate works
 

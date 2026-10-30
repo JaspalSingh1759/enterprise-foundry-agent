@@ -62,15 +62,15 @@ In a mature setup **nothing about monitoring is clicked together in the portal**
 
 ```
 docs/kql/agent-quality.kql            the queries (we have this)
-infra/monitoring/alerts.bicep         one scheduledQueryRule per signal   (Day 6)
-infra/monitoring/action-groups.bicep  who gets notified: email, Teams, PagerDuty   (Day 6)
-infra/monitoring/workbook.bicep       the dashboard   (Day 6)
-docs/runbooks/bulk-delete.md          what to do when it fires   (Day 6)
+infra/monitoring/alerts.bicep         one scheduledQueryRule per signal   (Day 12)
+infra/monitoring/action-groups.bicep  who gets notified: email, Teams, PagerDuty   (Day 12)
+infra/monitoring/workbook.bicep       the dashboard   (Day 12)
+docs/runbooks/bulk-delete.md          what to do when it fires   (Day 12)
 ```
 
 ### A signal as an alert rule (Bicep)
 
-This is how Q4 (bulk destructive turns) becomes an alert. It's the shape Day 6 will use:
+This is how Q4 (bulk destructive turns) becomes an alert. It's the shape Day 12 will use:
 
 ```bicep
 resource bulkDeleteAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
@@ -246,7 +246,7 @@ So our split is really **"direct calls" vs "calls through the agent"**, not **"t
 | Gap                                      | Why it matters                                                    | Planned fix                                                                                                                                                                                                                                  |
 | ---------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **No explicit test mark**                | Eval traffic through the agent looks like user traffic            | Test callers send `x-test-run: <run-id>`; the MCP server records it as `test.run_id`. **Open question:** does Foundry forward custom headers or baggage from the caller to the MCP server? It forwards `traceparent`; the rest needs a test. |
-| **Alert rules, action group, dashboard** | Queries alone don't wake anyone up                                | Day 6: Bicep `scheduledQueryRules`, as in Part 2                                                                                                                                                                                             |
+| **Alert rules, action group, dashboard** | Queries alone don't wake anyone up                                | Day 12: Bicep `scheduledQueryRules`, as in Part 2                                                                                                                                                                                            |
 | **Pipeline signal check**                | Nothing checks that telemetry still arrives after a deploy        | Part E: add "spans for this run arrived" + "no unhealthy turns" to the post-deploy stage                                                                                                                                                     |
 | **Foundry's own spans missing**          | No reply text, so no refusal rate and no turns without tool calls | Investigate why `responsesapi` spans stopped after App Insights was recreated                                                                                                                                                                |
 | **No agent version on spans**            | Can't compare old vs new during a rollout                         | Record the agent version as an attribute once Foundry spans are back                                                                                                                                                                         |

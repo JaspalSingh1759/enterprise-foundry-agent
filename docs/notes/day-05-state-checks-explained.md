@@ -288,7 +288,7 @@ The nightly run matters more for AI than for normal code: **the model can change
 Each case costs real tokens: several model calls per run, times up to 3 runs, per case, per deploy. Enterprises:
 - keep the **blocking** suite small and focused (tens of cases, not thousands),
 - run large suites nightly instead of on every commit,
-- watch the eval spend like any other cloud cost (it shows in token metrics, Day 6).
+- watch the eval spend like any other cloud cost (it shows in token metrics, Day 12).
 
 ---
 
@@ -323,7 +323,7 @@ Today: you run `dotnet test` by hand. Next: the pipeline runs it after every age
 | ❌     | The `evaluate-agent` job in `deploy.yml`, and stage 3 depending on it |
 | ❌     | The cache wait after tool changes                                     |
 
-**A limit to know and say out loud:** if the gate fails, stage 3 is skipped, but the new agent version is **already live in dev**, because stage 2 deployed it. For dev that's fine; that's what dev is for. For staging and prod, the answer is **promotion**: test a version in dev, then promote that exact version, and roll back if checks fail (Day 8).
+**A limit to know and say out loud:** if the gate fails, stage 3 is skipped, but the new agent version is **already live in dev**, because stage 2 deployed it. For dev that's fine; that's what dev is for. For staging and prod, the answer is **promotion**: test a version in dev, then promote that exact version, and roll back if checks fail (Day 14).
 
 ---
 

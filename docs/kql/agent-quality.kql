@@ -7,7 +7,7 @@
 // The MCP server sees every tool call, and Foundry passes its trace context through, so all tool
 // calls of one agent turn share an operation_Id.
 //
-// Every query repeats the same two building blocks so it can stand alone (Day 6 turns each one
+// Every query repeats the same two building blocks so it can stand alone (Day 12 turns each one
 // into an alert rule):
 //   agentOps  - turns that came from the agent: the MCP HTTP request arrived with a parent trace
 //               from Foundry. Direct calls from the state-check tests and seed-todo-list.sh have
