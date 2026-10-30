@@ -1,0 +1,63 @@
+{
+  "_comment": "Maple Bank (fictional) card dispute rules: the hard limits from the Card Dispute Policy, read by evaluate_dispute_rules. The policy document states the same numbers in words; CI checks they match. The version that applies is the one in force on the transaction date.",
+  "policy_versions": [
+    {
+      "version": "3.0",
+      "effective_from": "2026-01-01",
+      "effective_to": "2026-11-01",
+      "time_limit_days": {
+        "duplicate_charge": 90,
+        "incorrect_amount": 90,
+        "credit_not_processed": 90,
+        "cancelled_recurring": 90,
+        "not_received": 90,
+        "unauthorised": 90
+      },
+      "senior_approval_over_cad": 1000
+    },
+    {
+      "version": "3.1",
+      "effective_from": "2026-11-01",
+      "effective_to": null,
+      "time_limit_days": {
+        "duplicate_charge": 120,
+        "incorrect_amount": 120,
+        "credit_not_processed": 120,
+        "cancelled_recurring": 120,
+        "not_received": 120,
+        "unauthorised": 120
+      },
+      "senior_approval_over_cad": 1000
+    }
+  ],
+  "dispute_types": {
+    "duplicate_charge": {
+      "policy_section": "4.2",
+      "required_evidence": [ "Two posted charges with the same merchant, amount and date" ]
+    },
+    "incorrect_amount": {
+      "policy_section": "4.3",
+      "required_evidence": [ "Receipt or quote showing the agreed amount" ],
+      "notes": "Differences caused by currency conversion and the conversion fee are not errors."
+    },
+    "credit_not_processed": {
+      "policy_section": "4.4",
+      "required_evidence": [ "Proof of return or cancellation (return slip)", "No matching refund in the card history" ]
+    },
+    "cancelled_recurring": {
+      "policy_section": "4.5",
+      "required_evidence": [ "Cancellation confirmation with its date" ],
+      "notes": "Only charges dated after the cancellation are credited."
+    },
+    "not_received": {
+      "policy_section": "4.6",
+      "required_evidence": [ "Order confirmation with the expected delivery date", "The customer contacted the merchant" ],
+      "notes": "Not eligible before the expected delivery date has passed."
+    },
+    "unauthorised": {
+      "policy_section": "4.1",
+      "required_evidence": [ "The customer's history with the merchant" ],
+      "notes": "If the history shows the customer's own regular purchases, explain the statement descriptor. Otherwise send the case to the fraud team; the disputes team does not decide fraud."
+    }
+  }
+}

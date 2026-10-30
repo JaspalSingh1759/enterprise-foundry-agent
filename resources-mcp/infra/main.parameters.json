@@ -11,6 +11,9 @@
     "mcpTodoExists": {
       "value": "${SERVICE_MCP_TODO_RESOURCE_EXISTS=false}"
     },
+    "mcpBankingExists": {
+      "value": "${SERVICE_MCP_BANKING_RESOURCE_EXISTS=false}"
+    },
     "username": {
       "value": "${AZURE_USERNAME}"
     },
@@ -22,6 +25,9 @@
     },
     "mcpApiKey": {
       "value": "${MCP_API_KEY}"
+    },
+    "mcpBankingApiKey": {
+      "value": "${MCP_BANKING_API_KEY}"
     }
   }
 }

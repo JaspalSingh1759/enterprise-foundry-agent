@@ -16,6 +16,14 @@ services:
       path: ./Dockerfile
       context: .
       remoteBuild: false
+  mcp-banking:
+    project: ../src/MafStarterPack.McpBanking
+    host: containerapp
+    language: dotnet
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: false
 
 hooks:
   # azd checks required Bicep inputs (MCP_API_KEY) before preprovision hooks run,
@@ -41,7 +49,9 @@ hooks:
       run: ./scripts/pre-provision.ps1
       interactive: false
 
-  predeploy:
+  # prepackage, not predeploy: `azd up` builds the images (package) before the predeploy hook runs, so on a
+  # fresh checkout the Docker builds would start without the shared props they need.
+  prepackage:
     posix:
       shell: sh
       run: ./scripts/pre-deploy.sh

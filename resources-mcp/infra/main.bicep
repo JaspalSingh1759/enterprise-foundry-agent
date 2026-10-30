@@ -13,6 +13,8 @@ param username string = ''
 
 param mcpTodoExists bool
 
+param mcpBankingExists bool
+
 @description('Id of the user or app to assign application roles')
 param principalId string
 
@@ -22,6 +24,10 @@ param principalType string
 @secure()
 @description('API key for the mcp-todo server. Set by scripts/pre-provision.sh.')
 param mcpApiKey string
+
+@secure()
+@description('API key for the mcp-banking server. Set by scripts/pre-provision.sh.')
+param mcpBankingApiKey string
 
 // Tags that should be applied to all resources.
 // 
@@ -50,9 +56,11 @@ module resources 'resources.bicep' = {
     location: location
     tags: tags
     mcpTodoExists: mcpTodoExists
+    mcpBankingExists: mcpBankingExists
     principalId: principalId
     principalType: principalType
     mcpApiKey: mcpApiKey
+    mcpBankingApiKey: mcpBankingApiKey
   }
 }
 
@@ -63,5 +71,8 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.AZURE_CONTAI
 output AZURE_RESOURCE_MCP_TODO_ID string = resources.outputs.AZURE_RESOURCE_MCP_TODO_ID
 output AZURE_RESOURCE_MCP_TODO_NAME string = resources.outputs.AZURE_RESOURCE_MCP_TODO_NAME
 output AZURE_RESOURCE_MCP_TODO_FQDN string = resources.outputs.AZURE_RESOURCE_MCP_TODO_FQDN
+output AZURE_RESOURCE_MCP_BANKING_ID string = resources.outputs.AZURE_RESOURCE_MCP_BANKING_ID
+output AZURE_RESOURCE_MCP_BANKING_NAME string = resources.outputs.AZURE_RESOURCE_MCP_BANKING_NAME
+output AZURE_RESOURCE_MCP_BANKING_FQDN string = resources.outputs.AZURE_RESOURCE_MCP_BANKING_FQDN
 output AZURE_KEY_VAULT_NAME string = resources.outputs.AZURE_KEY_VAULT_NAME
 output AZURE_KEY_VAULT_ENDPOINT string = resources.outputs.AZURE_KEY_VAULT_ENDPOINT

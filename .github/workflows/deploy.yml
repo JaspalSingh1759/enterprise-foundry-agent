@@ -34,6 +34,7 @@ jobs:
     environment: ${{ inputs.environment || 'dev' }}
     outputs:
       mcp_fqdn: ${{ steps.mcp-deploy.outputs.MCP_FQDN }}
+      mcp_banking_fqdn: ${{ steps.mcp-deploy.outputs.MCP_BANKING_FQDN }}
       key_vault_name: ${{ steps.mcp-deploy.outputs.KEY_VAULT_NAME }}
       key_vault_endpoint: ${{ steps.mcp-deploy.outputs.KEY_VAULT_ENDPOINT }}
 
@@ -74,6 +75,7 @@ jobs:
           # Capture the output FQDN needed for Stage 2
           MCP_FQDN=$(azd env get-value AZURE_RESOURCE_MCP_TODO_FQDN)
           echo "MCP_FQDN=$MCP_FQDN" >> $GITHUB_OUTPUT
+          echo "MCP_BANKING_FQDN=$(azd env get-value AZURE_RESOURCE_MCP_BANKING_FQDN)" >> $GITHUB_OUTPUT
           echo "KEY_VAULT_NAME=$(azd env get-value AZURE_KEY_VAULT_NAME)" >> $GITHUB_OUTPUT
           echo "KEY_VAULT_ENDPOINT=$(azd env get-value AZURE_KEY_VAULT_ENDPOINT)" >> $GITHUB_OUTPUT
           echo "Deployed MCP Server at: $MCP_FQDN"

@@ -231,9 +231,29 @@ The same numbers appear, in words, in the policy document the agents search (Day
 
 ### 6.5 Done when
 
-- [ ] Running the generator twice gives byte-identical output.
-- [ ] `mcp-banking` is deployed and every tool returns correct data for CASE-0007, called directly.
-- [ ] `evaluate_dispute_rules` gives the right answer for all 40 cases (unit tests against the ground truth).
+- [x] Running the generator twice gives byte-identical output (also checked with a different `PYTHONHASHSEED`).
+- [x] `mcp-banking` is deployed and every tool returns correct data, called directly (locally and in rg-dev).
+- [x] `evaluate_dispute_rules` gives the right answer for all 40 cases: 49/49 tests pass in `tests/MafStarterPack.McpBanking.Tests`.
+
+### 6.6 Day 6 status (2026-10-30)
+
+**Built:** [generate.py](../../tools/synthetic-bank/generate.py) (50 customers, 80 cards, 6,429 transactions, 40 merchants, 60 past disputes, 40 cases, 27 attachments; ground truth in `resources-foundry/evals/datasets/dispute-cases.jsonl`: 20 credit, 11 deny, 5 request info, 4 fraud, 3 needing a senior analyst), the rules file, and `mcp-banking` with 7 tools, deployed next to `mcp-todo` with its own identity and its own API key.
+
+**Changed from the plan above:**
+
+| Plan said                   | What we did                                                                         | Why                                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Faker for names             | Standard library only, our own name lists                                           | No library version can change the data; same output on every machine                                           |
+| `tools/synthetic-bank/out/` | Bank data in `src/MafStarterPack.McpBanking/data/`; truth in the evals folder       | The Docker build only sees the server's folder; the truth must never be served                                 |
+| `dispute-rules.yaml`        | `dispute-rules.json`                                                                | No YAML library needed in the server                                                                           |
+| `read_receipt`              | `read_attachment`                                                                   | Cases also carry return slips, order and cancellation confirmations                                            |
+| Real receipt reading        | A stand-in reader returning the generated fields with a confidence by image quality | Agents are built and tested against a perfect reader first; Day 10 swaps in the real one and measures the loss |
+| Receipt images on Day 6     | Receipt data on Day 6; images on Day 10                                             | No imaging library on this machine; images only matter once a real reader exists                               |
+
+**Found on the way:**
+
+- **A latent pipeline bug:** the MCP tier copied the shared build props in a `predeploy` hook, but `azd up` builds images *before* that hook runs. It only worked because old copies were left on disk; a fresh CI runner would fail. Fixed by running the copy as a `prepackage` hook.
+- **Step 0.1 not fixed:** redeploying the todo-agent (version 7) didn't bring its spans back. In this App Insights resource the hosted agent has *never* sent a span; every agent span on record came from our gateway. Next: have the agents export their own telemetry, as the MCP servers do (Day 8).
 
 ---
 
