@@ -1,0 +1,60 @@
+{
+  "name": "${INDEX_NAME}",
+  "fields": [
+    { "name": "id", "type": "Edm.String", "key": true, "filterable": true, "searchable": false },
+    { "name": "chunk_id", "type": "Edm.String", "filterable": true, "searchable": false },
+    { "name": "parent_path", "type": "Edm.String", "filterable": true, "facetable": true, "searchable": false },
+    { "name": "title", "type": "Edm.String", "searchable": true, "synonymMaps": ["maple-synonyms"] },
+    { "name": "section", "type": "Edm.String", "searchable": true, "filterable": true },
+    { "name": "doc_type", "type": "Edm.String", "filterable": true, "facetable": true, "searchable": false },
+    { "name": "dispute_types", "type": "Collection(Edm.String)", "filterable": true, "facetable": true, "searchable": false },
+    { "name": "version", "type": "Edm.String", "filterable": true, "searchable": false },
+    { "name": "effective_from", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true },
+    { "name": "effective_to", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true },
+    { "name": "language", "type": "Edm.String", "filterable": true, "facetable": true, "searchable": false },
+    { "name": "audience", "type": "Collection(Edm.String)", "filterable": true, "searchable": false },
+    { "name": "owner", "type": "Edm.String", "filterable": true, "searchable": false },
+    { "name": "approved_by", "type": "Edm.String", "filterable": true, "searchable": false },
+    { "name": "chunk", "type": "Edm.String", "searchable": true, "analyzer": "standard.lucene", "synonymMaps": ["maple-synonyms"] },
+    {
+      "name": "chunk_vector",
+      "type": "Collection(Edm.Single)",
+      "searchable": true,
+      "retrievable": false,
+      "dimensions": 1536,
+      "vectorSearchProfile": "default"
+    }
+  ],
+  "vectorSearch": {
+    "algorithms": [
+      { "name": "hnsw", "kind": "hnsw", "hnswParameters": { "metric": "cosine" } }
+    ],
+    "vectorizers": [
+      {
+        "name": "aoai",
+        "kind": "azureOpenAI",
+        "azureOpenAIParameters": {
+          "resourceUri": "${OPENAI_ENDPOINT}",
+          "deploymentId": "${EMBEDDING_DEPLOYMENT}",
+          "modelName": "text-embedding-3-small"
+        }
+      }
+    ],
+    "profiles": [
+      { "name": "default", "algorithm": "hnsw", "vectorizer": "aoai" }
+    ]
+  },
+  "semantic": {
+    "defaultConfiguration": "default",
+    "configurations": [
+      {
+        "name": "default",
+        "prioritizedFields": {
+          "titleField": { "fieldName": "title" },
+          "prioritizedContentFields": [{ "fieldName": "chunk" }],
+          "prioritizedKeywordsFields": [{ "fieldName": "section" }]
+        }
+      }
+    ]
+  }
+}

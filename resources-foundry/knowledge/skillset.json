@@ -1,0 +1,17 @@
+{
+  "name": "${INDEX_NAME}-skillset",
+  "description": "Embeds each chunk with text-embedding-3-small. Chunking is done before upload (tools/knowledge/chunk_docs.py).",
+  "skills": [
+    {
+      "@odata.type": "#Microsoft.Skills.Text.AzureOpenAIEmbeddingSkill",
+      "name": "embed",
+      "context": "/document",
+      "resourceUri": "${OPENAI_ENDPOINT}",
+      "deploymentId": "${EMBEDDING_DEPLOYMENT}",
+      "modelName": "text-embedding-3-small",
+      "dimensions": 1536,
+      "inputs": [{ "name": "text", "source": "/document/chunk" }],
+      "outputs": [{ "name": "embedding", "targetName": "chunk_vector" }]
+    }
+  ]
+}

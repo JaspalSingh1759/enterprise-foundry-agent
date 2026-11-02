@@ -1,0 +1,120 @@
+name: Knowledge - Check & Ingest Maple Bank Documents
+
+# Pull requests run the checks only. A merge to main (or a manual run) also rebuilds the search index and
+# fails if retrieval quality drops. Branch protection + CODEOWNERS mean only compliance-reviewed documents
+# reach the index.
+on:
+  pull_request:
+    paths:
+      - docs/maple-bank/**
+      - resources-foundry/knowledge/**
+      - resources-foundry/evals/datasets/knowledge-retrieval.jsonl
+      - tools/knowledge/**
+      - src/MafStarterPack.McpBanking/rules/** # the policy must keep matching the rules engine
+      - .github/workflows/ingest-knowledge.yml
+  push:
+    branches: [main]
+    paths:
+      - docs/maple-bank/**
+      - resources-foundry/knowledge/**
+      - resources-foundry/evals/datasets/knowledge-retrieval.jsonl
+      - tools/knowledge/**
+      - src/MafStarterPack.McpBanking/rules/**
+      - .github/workflows/ingest-knowledge.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options: [dev, staging, prod]
+      index_name:
+        description: Index version to build (a new name builds a blue/green copy next to the live one)
+        required: true
+        default: maple-knowledge-v1
+      switch_alias:
+        description: Point the maple-knowledge alias at this index after its tests pass
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write # Azure OIDC
+  contents: read
+
+concurrency:
+  group: ingest-knowledge-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false # never stop an indexer run halfway
+
+env:
+  AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
+  GITLEAKS_VERSION: 8.21.2
+
+jobs:
+  check:
+    name: 1. Check documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Front matter, footer, policy dates, policy == dispute-rules.json, card numbers/emails, injection patterns.
+      - name: Lint, rules-vs-policy, PII and injection scan
+        run: python3 tools/knowledge/check_docs.py
+
+      - name: Secret scan
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks dir docs/maple-bank --redact --no-banner
+
+      - name: Chunk (dry run)
+        run: python3 tools/knowledge/chunk_docs.py "$RUNNER_TEMP/chunks"
+
+  ingest:
+    name: 2. Build index & test retrieval
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    env:
+      INDEX_NAME: ${{ inputs.index_name || 'maple-knowledge-v1' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Log in to Azure via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Resource names carry a random suffix; look them up in the environment's resource group.
+      - name: Find the search service, storage and Foundry account
+        run: |
+          RG="rg-$AZURE_ENV_NAME"
+          find_one() { az resource list -g "$RG" --resource-type "$1" --query "[0].name" -o tsv; }
+          ACCOUNT=$(find_one Microsoft.CognitiveServices/accounts)
+          {
+            echo "SEARCH_SERVICE=$(find_one Microsoft.Search/searchServices)"
+            echo "STORAGE_ACCOUNT=$(find_one Microsoft.Storage/storageAccounts)"
+            echo "OPENAI_ENDPOINT=$(az cognitiveservices account show -g "$RG" -n "$ACCOUNT" --query "properties.endpoints.\"OpenAI Language Model Instance API\"" -o tsv)"
+          } | tee -a "$GITHUB_ENV"
+
+      - name: Apply definitions, upload, run indexer
+        run: resources-foundry/knowledge/apply.sh
+
+      # Fails on hit@3 < 90% or any wrong policy version. Tests the new index directly, before any alias switch.
+      - name: Retrieval tests
+        run: python3 tools/knowledge/retrieval_test.py --index "$INDEX_NAME"
+
+      - name: Switch alias (blue/green)
+        if: inputs.switch_alias
+        run: ALIAS_ONLY=true SWITCH_ALIAS=true resources-foundry/knowledge/apply.sh

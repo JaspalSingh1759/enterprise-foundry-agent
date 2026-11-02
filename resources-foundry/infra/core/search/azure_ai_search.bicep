@@ -27,6 +27,9 @@ param principalId string
 @description('Principal type of user or app')
 param principalType string
 
+@description('Service principal the CI/CD pipeline runs as; it builds the index and uploads the documents')
+param pipelinePrincipalId string = ''
+
 @description('Name for the AI Foundry search connection')
 param connectionName string
 
@@ -57,16 +60,14 @@ resource searchService 'Microsoft.Search/searchServices@2024-06-01-preview' = {
     replicaCount: 1
     partitionCount: 1
     hostingMode: 'default'
-    authOptions: {
-      aadOrApiKey: {
-        aadAuthFailureMode: 'http401WithBearerChallenge'
-      }
-    }
-    disableLocalAuth: false
+    // Entra ID only: admin and query keys are turned off.
+    disableLocalAuth: true
     encryptionWithCmk: {
       enforcement: 'Unspecified'
     }
     publicNetworkAccess: 'enabled'
+    // Semantic ranker re-orders hybrid results by meaning. The free plan allows 1,000 queries a month.
+    semanticSearch: 'free'
   }
 }
 
@@ -115,27 +116,71 @@ resource searchToAIServicesRoleAssignment 'Microsoft.Authorization/roleAssignmen
   }
 }
 
-// AI Project needs Search access - Service Contributor
-resource aiServicesToSearchServiceRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiServicesAccountName) && !empty(aiProjectName)) {
-  name: guid(searchService.id, aiServicesAccountName, aiProjectName, 'Search Service Contributor', uniqueString(deployment().name))
+// The project only reads the index. It gets no Search Service Contributor (that role can change and delete
+// indexes) and no write access to the documents.
+resource aiServicesToSearchDataRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiServicesAccountName) && !empty(aiProjectName)) {
+  name: guid(searchService.id, aiServicesAccountName, aiProjectName, 'Search Index Data Reader', uniqueString(deployment().name))
   scope: searchService
   properties: {
-    // GOOD
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0') // Search Service Contributor
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1407120a-92aa-4202-b7e9-c0e197c71c8f') // Search Index Data Reader
     principalId: aiAccount::aiProject.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
-// AI Project needs Search access - Index Data Contributor
-resource aiServicesToSearchDataRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiServicesAccountName) && !empty(aiProjectName)) {
-  name: guid(searchService.id, aiServicesAccountName, aiProjectName, 'Search Index Data Contributor', uniqueString(deployment().name))
+// The developer and the pipeline build the index, indexer and skillset (resources-foundry/knowledge/apply.sh).
+resource userToSearchServiceRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(searchService.id, principalId, 'Search Service Contributor')
   scope: searchService
   properties: {
-    // GOOD
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7') // Search Index Data Contributor
-    principalId: aiAccount::aiProject.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0') // Search Service Contributor
+    principalId: principalId
+    principalType: principalType
+  }
+}
+
+var hasPipeline = !empty(pipelinePrincipalId) && pipelinePrincipalId != principalId
+
+resource pipelineToSearchServiceRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasPipeline) {
+  name: guid(searchService.id, pipelinePrincipalId, 'Search Service Contributor')
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0') // Search Service Contributor
+    principalId: pipelinePrincipalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Retrieval tests query the index; reading is all they need.
+resource pipelineToSearchDataRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasPipeline) {
+  name: guid(searchService.id, pipelinePrincipalId, 'Search Index Data Reader')
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1407120a-92aa-4202-b7e9-c0e197c71c8f') // Search Index Data Reader
+    principalId: pipelinePrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// The pipeline uploads the documents, to this one container only.
+resource pipelineToStorageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasPipeline) {
+  name: guid(storageContainer.id, pipelinePrincipalId, 'Storage Blob Data Contributor')
+  scope: storageContainer
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: pipelinePrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// The developer uploads documents from their machine (resources-foundry/knowledge/apply.sh), to this container only.
+resource userToStorageContainerRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageContainer.id, principalId, 'Storage Blob Data Contributor')
+  scope: storageContainer
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: principalId
+    principalType: principalType
   }
 }
 

@@ -75,10 +75,17 @@ param aiProjectConnectionCredentialsJson string = '{}'
 @description('List of resources to create and connect to the AI project')
 param aiProjectDependentResourcesJson string = '[]'
 
+@description('Create the knowledge base for the dispute agents: Blob Storage for the documents and Azure AI Search for the index. Set here rather than in an azd environment variable, so the laptop and the pipeline always deploy the same thing.')
+param enableKnowledgeBase bool = true
+
 var aiProjectDeployments = json(aiProjectDeploymentsJson)
 var aiProjectConnections = json(aiProjectConnectionsJson)
 var aiProjectConnectionCreds = json(aiProjectConnectionCredentialsJson)
-var aiProjectDependentResources = json(aiProjectDependentResourcesJson)
+var knowledgeBaseResources = enableKnowledgeBase ? [
+  { resource: 'storage', connectionName: 'storage' }
+  { resource: 'azure_ai_search', connectionName: 'search' }
+] : []
+var aiProjectDependentResources = union(json(aiProjectDependentResourcesJson), knowledgeBaseResources)
 
 @description('Enable hosted agent deployment')
 param enableHostedAgents bool
@@ -138,6 +145,11 @@ var dependentResources = shouldCreateAcr ? union(aiProjectDependentResources, [
   }
 ]) : aiProjectDependentResources
 
+// Search lives in its own region: East US 2 ran out of Search capacity (Nov 2026), and Canada Central
+// keeps the bank's knowledge documents in Canada. The models stay in East US 2.
+@description('Location for the Azure AI Search service')
+param searchLocation string = location
+
 // AI Project module — only when creating new resources
 module aiProject 'core/ai/ai-project.bicep' = if (!useExistingAiProject) {
   scope: rg
@@ -145,6 +157,7 @@ module aiProject 'core/ai/ai-project.bicep' = if (!useExistingAiProject) {
   params: {
     tags: tags
     location: aiDeploymentsLocation
+    searchLocation: searchLocation
     aiFoundryProjectName: aiFoundryProjectName
     principalId: principalId
     principalType: principalType

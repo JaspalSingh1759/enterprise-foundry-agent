@@ -1,0 +1,5 @@
+{
+  "name": "maple-synonyms",
+  "format": "solr",
+  "synonyms": "chargeback, dispute\ncharged twice, double charge, duplicate\nrefund, credit\nnot recognised, unrecognised, unauthorised, unknown charge\nsubscription, recurring, membership\novercharged, incorrect amount, wrong amount\nreceipt, invoice, proof of purchase"
+}

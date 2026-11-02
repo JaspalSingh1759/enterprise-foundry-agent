@@ -1,0 +1,14 @@
+{
+  "name": "maple-knowledge-blobs",
+  "description": "Chunk files written by tools/knowledge/chunk_docs.py. The search service signs in with its managed identity.",
+  "type": "azureblob",
+  "credentials": {
+    "connectionString": "ResourceId=${STORAGE_RESOURCE_ID};"
+  },
+  "container": {
+    "name": "${CONTAINER}"
+  },
+  "dataDeletionDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.NativeBlobSoftDeleteDeletionDetectionPolicy"
+  }
+}

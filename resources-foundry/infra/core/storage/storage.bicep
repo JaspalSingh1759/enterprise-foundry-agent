@@ -39,6 +39,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   properties: {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
+    // Entra ID only: no account keys or SAS tokens signed with them.
+    allowSharedKeyAccess: false
     minimumTlsVersion: 'TLS1_2'
     accessTier: 'Hot'
     encryption: {
@@ -51,6 +53,19 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
         }
       }
       keySource: 'Microsoft.Storage'
+    }
+  }
+}
+
+// Deleted blobs are kept for 7 days. The search indexer's deletion detection relies on this to remove a
+// deleted document's chunks from the index.
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {
+    deleteRetentionPolicy: {
+      enabled: true
+      days: 7
     }
   }
 }

@@ -8,6 +8,9 @@ param location string
 
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, location)
 
+@description('Location for the Azure AI Search service; defaults to the main location')
+param searchLocation string = location
+
 @description('Name of the project')
 param aiFoundryProjectName string
 
@@ -176,6 +179,15 @@ resource aiAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 var shouldCreateExistingAppInsightsConnection = enableMonitoring && hasExistingAppInsightsConnectionString && !hasExistingAppInsightsConnection && !empty(existingApplicationInsightsResourceId)
 var shouldCreateAppInsightsConnection = shouldCreateAppInsights || shouldCreateExistingAppInsightsConnection
 
+// Read the connection string from the App Insights resource itself rather than trusting the copy passed in.
+// The copy lives in the azd environment and is written back by the output below, so after App Insights was
+// recreated the old string kept copying itself forward: Foundry sent the hosted agent's telemetry to the
+// deleted resource and nothing reported an error. Assumes App Insights is in this resource group, as here.
+resource existingApplicationInsights 'Microsoft.Insights/components@2020-02-02' existing = if (shouldCreateExistingAppInsightsConnection) {
+  name: last(split(existingApplicationInsightsResourceId, '/'))
+}
+var existingAppInsightsConnectionString = shouldCreateExistingAppInsightsConnection ? existingApplicationInsights!.properties.ConnectionString : existingApplicationInsightsConnectionString
+
 resource appInsightConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview' = if (shouldCreateAppInsightsConnection) {
   parent: aiAccount::project
   name: 'appi-${resourceToken}'
@@ -185,7 +197,7 @@ resource appInsightConnection 'Microsoft.CognitiveServices/accounts/projects/con
     authType: 'ApiKey'
     isSharedToAll: true
     credentials: {
-      key: shouldCreateAppInsights ? applicationInsights.outputs.connectionString : existingApplicationInsightsConnectionString
+      key: shouldCreateAppInsights ? applicationInsights.outputs.connectionString : existingAppInsightsConnectionString
     }
     metadata: {
       ApiType: 'Azure'
@@ -379,7 +391,8 @@ module azureAiSearch '../search/azure_ai_search.bicep' = if (hasSearchConnection
     aiProjectName: aiAccount::project.name
     principalId: principalId
     principalType: principalType
-    location: location
+    pipelinePrincipalId: pipelinePrincipalId
+    location: searchLocation
   }
 }
 
@@ -393,7 +406,7 @@ output aiServicesAccountName string = aiAccount.name
 output aiServicesProjectName string = aiAccount::project.name
 output aiServicesPrincipalId string = aiAccount.identity.principalId
 output projectName string = aiAccount::project.name
-output APPLICATIONINSIGHTS_CONNECTION_STRING string = shouldCreateAppInsights ? applicationInsights.outputs.connectionString : (hasExistingAppInsightsConnectionString ? existingApplicationInsightsConnectionString : '')
+output APPLICATIONINSIGHTS_CONNECTION_STRING string = shouldCreateAppInsights ? applicationInsights.outputs.connectionString : (hasExistingAppInsightsConnectionString ? existingAppInsightsConnectionString : '')
 output APPLICATIONINSIGHTS_RESOURCE_ID string = shouldCreateAppInsights ? applicationInsights.outputs.id : (hasExistingAppInsightsConnectionString ? existingApplicationInsightsResourceId : '')
 
 // Connection outputs from the connections array

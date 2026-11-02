@@ -1,0 +1,22 @@
+{
+  "name": "${INDEX_NAME}-indexer",
+  "dataSourceName": "maple-knowledge-blobs",
+  "targetIndexName": "${INDEX_NAME}",
+  "skillsetName": "${INDEX_NAME}-skillset",
+  "parameters": {
+    "configuration": {
+      "parsingMode": "json",
+      "dataToExtract": "contentAndMetadata"
+    }
+  },
+  "fieldMappings": [
+    {
+      "sourceFieldName": "metadata_storage_path",
+      "targetFieldName": "id",
+      "mappingFunction": { "name": "base64Encode" }
+    }
+  ],
+  "outputFieldMappings": [
+    { "sourceFieldName": "/document/chunk_vector", "targetFieldName": "chunk_vector" }
+  ]
+}

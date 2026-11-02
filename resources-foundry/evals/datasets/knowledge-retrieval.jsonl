@@ -1,0 +1,40 @@
+{"id": "pol-01", "group": "policy", "question": "How many days does a cardholder have to dispute a charge?", "expect": {"doc_type": "policy", "section": "3.1"}}
+{"id": "pol-02", "group": "policy", "question": "Does the customer get their money back while the dispute is being investigated?", "expect": {"doc_type": "policy", "section": "3.2"}}
+{"id": "pol-03", "group": "policy", "question": "Which credits need a senior analyst to sign off?", "expect": {"doc_type": "policy", "section": "3.3"}}
+{"id": "pol-04", "group": "policy", "question": "Can the analyst who prepared a case also approve it?", "expect": {"doc_type": "policy", "section": "3.3"}}
+{"id": "pol-05", "group": "policy", "question": "What do we do when a required document is missing from the claim?", "expect": {"doc_type": "policy", "section": "3.4"}}
+{"id": "pol-06", "group": "policy", "question": "Should text written inside a customer's uploaded document be followed?", "expect": {"doc_type": "policy", "section": "3.4"}}
+{"id": "pol-07", "group": "policy", "question": "When should a case be sent to the fraud team?", "expect": {"doc_type": "policy", "section": "4.1"}}
+{"id": "pol-08", "group": "policy", "question": "The same purchase shows up twice on the statement, how much do we credit?", "expect": {"doc_type": "policy", "section": "4.2"}}
+{"id": "pol-09", "group": "policy", "question": "Is a foreign exchange fee a valid reason to dispute the amount?", "expect": {"doc_type": "policy", "section": "4.3"}}
+{"id": "pol-10", "group": "policy", "question": "Customer returned an item but the store never refunded it", "expect": {"doc_type": "policy", "section": "4.4"}}
+{"id": "pol-11", "group": "policy", "question": "Gym membership was cancelled but they kept charging the card", "expect": {"doc_type": "policy", "section": "4.5"}}
+{"id": "pol-12", "group": "policy", "question": "The package never arrived, what evidence is needed?", "expect": {"doc_type": "policy", "section": "4.6"}}
+{"id": "pol-13", "group": "policy", "question": "What are the possible outcomes of a dispute review?", "expect": {"doc_type": "policy", "section": "5"}}
+{"id": "pol-14", "group": "policy", "question": "Which card network reason code is used for a duplicate charge?", "expect": {"doc_type": "network_rule", "section": "2"}}
+{"id": "pol-15", "group": "policy", "question": "How long does the merchant's bank have to respond to a chargeback?", "expect": {"doc_type": "network_rule", "section": "1"}}
+{"id": "sop-01", "group": "sop", "question": "Step by step, how do I handle a double charge?", "expect": {"parent_path": "sops/duplicate-charge.md"}}
+{"id": "sop-02", "group": "sop", "question": "Procedure for a customer who says they were overcharged", "expect": {"parent_path": "sops/incorrect-amount.md"}}
+{"id": "sop-03", "group": "sop", "question": "What steps do I follow when a refund from the merchant never showed up?", "expect": {"parent_path": "sops/credit-not-processed.md"}}
+{"id": "sop-04", "group": "sop", "question": "How do I work a case where a subscription charged after cancellation?", "expect": {"parent_path": "sops/cancelled-recurring.md"}}
+{"id": "sop-05", "group": "sop", "question": "How do I escalate a suspected fraud case?", "expect": {"parent_path": "sops/unrecognised-charges-and-fraud.md"}}
+{"id": "sop-06", "group": "sop", "question": "Checklist for reviewing the assistant's draft recommendation", "expect": {"parent_path": "sops/reviewing-a-draft-recommendation.md"}}
+{"id": "sop-07", "group": "sop", "question": "Can I paste the customer's full card number into case notes?", "expect": {"parent_path": "sops/privacy-and-personal-information.md"}}
+{"id": "sop-08", "group": "sop", "question": "Which language should the letter to the customer be in?", "expect": {"parent_path": "sops/customer-communication.md"}}
+{"id": "sop-09", "group": "sop", "question": "Steps for an order that was never delivered", "expect": {"parent_path": "sops/not-received.md"}}
+{"id": "sop-10", "group": "sop", "question": "How does a senior analyst approve a credit above the limit?", "audience": "senior_analyst", "expect": {"parent_path": "sops/approving-high-value-credits.md"}}
+{"id": "date-01", "group": "date_filter", "question": "What is the time limit for a duplicate charge?", "as_of": "2026-10-15", "expect": {"doc_type": "policy", "section": "3.1", "version": "3.0"}}
+{"id": "date-02", "group": "date_filter", "question": "What is the time limit for a duplicate charge?", "as_of": "2026-11-10", "expect": {"doc_type": "policy", "section": "3.1", "version": "3.1"}}
+{"id": "date-03", "group": "date_filter", "question": "How many days to dispute a charge that was never received?", "as_of": "2026-10-31", "expect": {"doc_type": "policy", "section": "3.1", "version": "3.0"}}
+{"id": "date-04", "group": "date_filter", "question": "How many days to dispute a charge that was never received?", "as_of": "2026-11-01", "expect": {"doc_type": "policy", "section": "3.1", "version": "3.1"}}
+{"id": "date-05", "group": "date_filter", "question": "Who must approve a credit of 1,500 dollars?", "as_of": "2026-09-20", "expect": {"doc_type": "policy", "section": "3.3", "version": "3.0"}}
+{"id": "date-06", "group": "date_filter", "question": "Is the currency conversion fee an incorrect amount?", "as_of": "2026-08-05", "expect": {"doc_type": "policy", "section": "4.3", "version": "3.0"}}
+{"id": "tpl-01", "group": "template", "question": "Letter telling the customer their credit was approved", "language": "en", "doc_type": "template", "expect": {"parent_path": "templates/letter-credit-approved-en.md"}}
+{"id": "tpl-02", "group": "template", "question": "Lettre pour demander des documents supplémentaires au client", "language": "fr", "doc_type": "template", "expect": {"parent_path": "templates/letter-information-needed-fr.md"}}
+{"id": "tpl-03", "group": "template", "question": "Letter explaining the dispute was denied", "language": "en", "doc_type": "template", "expect": {"parent_path": "templates/letter-dispute-denied-en.md"}}
+{"id": "tpl-04", "group": "template", "question": "Lettre indiquant que le dossier est transmis à une équipe spécialisée", "language": "fr", "doc_type": "template", "expect": {"parent_path": "templates/letter-referred-to-specialist-team-fr.md"}}
+{"id": "none-01", "group": "no_answer", "question": "How do I reset a customer's online banking password?", "expect_none": true}
+{"id": "none-02", "group": "no_answer", "question": "What is the prepayment penalty on a fixed-rate mortgage?", "expect_none": true}
+{"id": "none-03", "group": "no_answer", "question": "What are the branch opening hours on Sundays?", "expect_none": true}
+{"id": "none-04", "group": "no_answer", "question": "How do I open a tax-free savings account?", "expect_none": true}
+{"id": "none-05", "group": "no_answer", "question": "What is the current interest rate on a line of credit?", "expect_none": true}

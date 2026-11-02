@@ -55,6 +55,25 @@ services:
           # 5 evaluators x 28 cases are scored in parallel; at 10 a third of the judge calls got HTTP 429.
           capacity: 50
           name: GlobalStandard
+      # Embeddings for the Maple Bank knowledge base. Called by the search service (indexer and queries).
+      # Standard, not GlobalStandard: processed in this region only.
+      - model:
+          format: OpenAI
+          name: text-embedding-3-small
+          version: "1"
+        name: text-embedding-3-small
+        sku:
+          capacity: 50
+          name: Standard
+      # Small model for the dispute intake agent (Day 8), kept only if its eval gate passes on it.
+      - model:
+          format: OpenAI
+          name: gpt-5-nano
+          version: "2025-08-07"
+        name: gpt-5-nano
+        sku:
+          capacity: 100
+          name: GlobalStandard
     env:
       AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       AZURE_RESOURCE_MCP_TODO_FQDN: ${AZURE_RESOURCE_MCP_TODO_FQDN}

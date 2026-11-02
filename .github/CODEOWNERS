@@ -1,0 +1,22 @@
+# Who must review changes before they merge (enforced by branch protection on main: "Require review from
+# Code Owners"). Later rules win.
+#
+# In a real bank these would be teams, e.g. @maple-bank/compliance and @maple-bank/disputes-ops. This is a
+# one-person repo, so the owner stands in for every team; the comments say which team each rule belongs to.
+
+# Compliance approves anything that changes what the bank tells or credits a customer. The rules engine is
+# here too: its numbers must match the policy (tools/knowledge/check_docs.py fails the build if they don't).
+/docs/maple-bank/policy/                       @JaspalSingh1759
+/docs/maple-bank/network-rules/                @JaspalSingh1759
+/src/MafStarterPack.McpBanking/rules/          @JaspalSingh1759
+
+# Disputes operations owns the procedures, letters and FAQ.
+/docs/maple-bank/sops/                         @JaspalSingh1759
+/docs/maple-bank/templates/                    @JaspalSingh1759
+/docs/maple-bank/faq/                          @JaspalSingh1759
+
+# The platform team owns how documents become the index, and the tests that guard it.
+/resources-foundry/knowledge/                  @JaspalSingh1759
+/resources-foundry/evals/datasets/knowledge-retrieval.jsonl  @JaspalSingh1759
+/tools/knowledge/                              @JaspalSingh1759
+/.github/workflows/ingest-knowledge.yml        @JaspalSingh1759
