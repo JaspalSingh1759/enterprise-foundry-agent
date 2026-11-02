@@ -23,3 +23,14 @@ foreach ($key in @("AZURE_KEY_VAULT_NAME", "AZURE_KEY_VAULT_ENDPOINT")) {
         azd env set $key $value
     }
 }
+
+# Role assignments need the service principal's OBJECT id. The pipeline's client id (appId) looks the same
+# but matches no identity, so the roles silently do nothing. az ad sp show accepts either and returns the object id.
+$pipelinePrincipal = azd env get-value AZURE_PIPELINE_PRINCIPAL_ID 2>$null
+if ($LASTEXITCODE -eq 0 -and ![string]::IsNullOrEmpty($pipelinePrincipal)) {
+    $objectId = az ad sp show --id $pipelinePrincipal --query id -o tsv 2>$null
+    if (![string]::IsNullOrEmpty($objectId) -and $objectId -ne $pipelinePrincipal) {
+        Write-Host "AZURE_PIPELINE_PRINCIPAL_ID was a client id; using the service principal's object id $objectId"
+        azd env set AZURE_PIPELINE_PRINCIPAL_ID $objectId
+    }
+}

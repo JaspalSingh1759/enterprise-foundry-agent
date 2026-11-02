@@ -29,3 +29,14 @@ foundryEndpoint=$(azd env get-value AZURE_AI_PROJECT_ENDPOINT 2>/dev/null || azd
 if [ -n "$foundryEndpoint" ]; then
     azd env set FOUNDRY_PROJECT_ENDPOINT "$foundryEndpoint"
 fi
+
+# Role assignments need the service principal's OBJECT id. The pipeline's client id (appId) looks the same
+# but matches no identity, so the roles silently do nothing. az ad sp show accepts either and returns the object id.
+pipelinePrincipal=$(azd env get-value AZURE_PIPELINE_PRINCIPAL_ID 2>/dev/null || echo "")
+if [ -n "$pipelinePrincipal" ]; then
+    objectId=$(az ad sp show --id "$pipelinePrincipal" --query id -o tsv 2>/dev/null || echo "")
+    if [ -n "$objectId" ] && [ "$objectId" != "$pipelinePrincipal" ]; then
+        echo "AZURE_PIPELINE_PRINCIPAL_ID was a client id; using the service principal's object id $objectId"
+        azd env set AZURE_PIPELINE_PRINCIPAL_ID "$objectId"
+    fi
+fi
