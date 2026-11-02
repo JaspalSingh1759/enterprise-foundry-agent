@@ -138,4 +138,4 @@ for path in docs:
         (OUT / f"{chunk['chunk_id']}.json").write_text(json.dumps(chunk, ensure_ascii=False, indent=2), encoding="utf-8")
         count += 1
 
-print(f"Wrote {count} chunks from {len(docs)} documents to {OUT.relative_to(ROOT)}")
+print(f"Wrote {count} chunks from {len(docs)} documents to {OUT}")
