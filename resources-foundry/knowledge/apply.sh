@@ -78,7 +78,15 @@ put() {
   local file="$1" collection="$2" name
   name="$(render "$file" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   echo "  $collection/$name"
-  search PUT "$collection/$name" "$(render "$file")" >/dev/null
+  # The service sometimes answers 409 "conflicting update" (or 429/503) for a moment; retry those with backoff.
+  local attempt error
+  for attempt in 1 2 3 4; do
+    error="$(search PUT "$collection/$name" "$(render "$file")" 2>&1 >/dev/null)" && return 0
+    grep -qE "HTTP (409|429|503)" <<<"$error" || break
+    [ "$attempt" -lt 4 ] && { echo "    $(head -1 <<<"$error"); retrying in $((attempt * 5))s"; sleep $((attempt * 5)); }
+  done
+  echo "$error" >&2
+  return 1
 }
 
 echo "1. Chunking documents"
