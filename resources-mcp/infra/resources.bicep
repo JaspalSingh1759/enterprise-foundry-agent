@@ -292,6 +292,12 @@ module mcpBanking 'br/public:avm/res/app/container-app:0.8.0' = {
             name: 'Search__Endpoint'
             value: 'https://search-${resourceToken}.search.windows.net'
           }
+          // Cases live in disputes-api's "cases" table (Day 9), in the Foundry tier's storage account. The apps tier
+          // grants this identity Storage Table Data Reader on that table only.
+          {
+            name: 'Storage__AccountName'
+            value: 'st${resourceToken}'
+          }
           {
             name: 'PORT'
             value: '8080'

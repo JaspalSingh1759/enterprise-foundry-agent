@@ -20,9 +20,12 @@ param todoAgentName string = ''
 param todoAgentVersion string = ''
 param mcpTodoFqdn string = ''
 
-#disable-next-line no-unused-params
+param disputesApiExists bool = false
+@description('Client ID of the disputes-api Entra app registration (scripts/entra/create-disputes-app.sh)')
+param disputesApiClientId string = ''
+param mcpBankingPrincipalId string = ''
+
 param principalId string = ''
-#disable-next-line no-unused-params
 param principalType string = ''
 
 var tags = username == '' ? {
@@ -49,6 +52,11 @@ module resources 'resources.bicep' = {
     todoAgentName: todoAgentName
     todoAgentVersion: todoAgentVersion
     mcpTodoFqdn: mcpTodoFqdn
+    disputesApiExists: disputesApiExists
+    disputesApiClientId: disputesApiClientId
+    mcpBankingPrincipalId: mcpBankingPrincipalId
+    principalId: principalId
+    principalType: principalType
   }
 }
 
@@ -56,3 +64,4 @@ output AZURE_TENANT_ID string = subscription().tenantId
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT
 output AGENT_FQDN string = resources.outputs.AGENT_FQDN
 output WEBUI_FQDN string = resources.outputs.WEBUI_FQDN
+output DISPUTES_API_FQDN string = resources.outputs.DISPUTES_API_FQDN

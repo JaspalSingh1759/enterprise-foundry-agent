@@ -29,6 +29,15 @@
     "mcpTodoFqdn": {
       "value": "${AZURE_RESOURCE_MCP_TODO_FQDN}"
     },
+    "disputesApiExists": {
+      "value": "${SERVICE_DISPUTES_API_RESOURCE_EXISTS=false}"
+    },
+    "disputesApiClientId": {
+      "value": "${DISPUTES_API_CLIENT_ID=}"
+    },
+    "mcpBankingPrincipalId": {
+      "value": "${AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID=}"
+    },
     "username": {
       "value": "${AZURE_USERNAME}"
     },

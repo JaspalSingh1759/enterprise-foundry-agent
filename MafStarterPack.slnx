@@ -3,6 +3,7 @@
     <Project Path="src/MafStarterPack.Agent/MafStarterPack.Agent.csproj" />
     <Project Path="src/MafStarterPack.AppHost/MafStarterPack.AppHost.csproj" />
     <Project Path="src/MafStarterPack.HostedAgent/MafStarterPack.HostedAgent.csproj" />
+    <Project Path="src/MafStarterPack.DisputesApi/MafStarterPack.DisputesApi.csproj" />
     <Project Path="src/MafStarterPack.McpBanking/MafStarterPack.McpBanking.csproj" />
     <Project Path="src/MafStarterPack.McpTodo/MafStarterPack.McpTodo.csproj" />
     <Project Path="src/MafStarterPack.ServiceDefaults/MafStarterPack.ServiceDefaults.csproj" />
@@ -10,6 +11,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MafStarterPack.AgentEvals/MafStarterPack.AgentEvals.csproj" />
+    <Project Path="tests/MafStarterPack.DisputesApi.Tests/MafStarterPack.DisputesApi.Tests.csproj" />
     <Project Path="tests/MafStarterPack.McpBanking.Tests/MafStarterPack.McpBanking.Tests.csproj" />
   </Folder>
 </Solution>

@@ -12,8 +12,8 @@ namespace MafStarterPack.McpBanking;
 // - Nothing here moves money or closes a case. Crediting a customer happens in disputes-api after an
 //   analyst approves; no agent can reach that code, whatever its prompt says.
 [McpServerToolType]
-public class BankingTools(BankData bank, DisputeRules rules, CaseStore store, AttachmentReader reader, PolicySearch search,
-                          ILogger<BankingTools> logger)
+public class BankingTools(BankData bank, CaseLookup cases, DisputeRules rules, CaseStore store, AttachmentReader reader,
+                          PolicySearch search, ILogger<BankingTools> logger)
 {
     private const int MaxTransactions = 200;
     private static readonly string[] Actions = ["recommend_credit", "deny", "request_info", "route_to_fraud"];
@@ -46,7 +46,7 @@ public class BankingTools(BankData bank, DisputeRules rules, CaseStore store, At
             customer = new { dispute.CustomerId, customer.Language, customer.Province },
             card = new { card.Id, card.Product, card.Last4 },
             attachments = dispute.AttachmentIds.Select(id => new { id, bank.Attachments[id].Kind }),
-            status = store.StatusOf(dispute),
+            status = store.GetDraft(dispute.Id) is null ? dispute.Status : store.StatusOf(dispute),
             draft = store.GetDraft(dispute.Id),
         });
     }
@@ -299,11 +299,14 @@ public class BankingTools(BankData bank, DisputeRules rules, CaseStore store, At
 
     private bool TryGetCase(string caseId, out DisputeCase dispute, out string error)
     {
-        if (bank.Cases.TryGetValue(caseId.Trim(), out dispute!))
+        if (cases.Find(caseId.Trim()) is { } found)
         {
+            dispute = found;
             error = string.Empty;
             return true;
         }
+
+        dispute = null!;
 
         error = $"Not found: there is no case {caseId}. Case IDs look like CASE-0007.";
         return false;

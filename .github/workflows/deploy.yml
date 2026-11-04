@@ -175,7 +175,7 @@ jobs:
   # Stage 3: Deploy Aspire WebUI & Gateway Apps
   # =============================================================
   deploy-aspire-apps:
-    name: 3. Deploy Aspire WebUI & Gateway
+    name: 3. Deploy Aspire WebUI, Gateway & Disputes API
     needs: [deploy-mcp-server, deploy-ai-foundry]
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'dev' }}
@@ -230,5 +230,10 @@ jobs:
           azd env set TODO_AGENT_NAME "${{ needs.deploy-ai-foundry.outputs.todo_agent_name }}"
           azd env set TODO_AGENT_VERSION "${{ needs.deploy-ai-foundry.outputs.todo_agent_version }}"
           azd env set AZURE_RESOURCE_MCP_TODO_FQDN "${{ needs.deploy-mcp-server.outputs.mcp_fqdn }}"
+          # disputes-api (Day 9): mcp-banking reads its cases table; the Entra app registration
+          # (scripts/entra/create-disputes-app.sh) protects it. The client ID is not a secret, so it's an environment
+          # variable. Without it, disputes-api deploys with internal ingress only, never public without sign-in.
+          azd env set AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID "${{ needs.deploy-mcp-server.outputs.mcp_banking_principal_id }}"
+          azd env set DISPUTES_API_CLIENT_ID "${{ vars.DISPUTES_API_CLIENT_ID }}"
           azd provision --no-prompt --no-state
           azd deploy --no-prompt

@@ -21,3 +21,9 @@ services:
     project: ./src/MafStarterPack.WebUI
     host: containerapp
     language: dotnet
+
+  # Maple Bank dispute case system (Day 9)
+  disputes-api:
+    project: ./src/MafStarterPack.DisputesApi
+    host: containerapp
+    language: dotnet

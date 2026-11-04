@@ -45,11 +45,13 @@ jobs:
       - name: Build All Projects (Release)
         run: dotnet build MafStarterPack.slnx --no-restore --configuration Release
 
-      # Rules engine, policy-search filter and tool guard rails. No Azure needed: the tests load the bank
-      # data and dispute rules from the repo. (The agent evals need a
+      # Rules engine, policy-search filter, tool guard rails, approval rules and letters. No Azure needed: the
+      # tests load the bank data, dispute rules and letter templates from the repo. (The agent evals need a
       # deployed environment and run after deploy.)
       - name: Run Unit Tests
-        run: dotnet test tests/MafStarterPack.McpBanking.Tests --no-build --configuration Release
+        run: |
+          dotnet test tests/MafStarterPack.McpBanking.Tests --no-build --configuration Release
+          dotnet test tests/MafStarterPack.DisputesApi.Tests --no-build --configuration Release
 
   # -------------------------------------------------------------
   # Job 2: Validate Infrastructure as Code (Bicep Linting)

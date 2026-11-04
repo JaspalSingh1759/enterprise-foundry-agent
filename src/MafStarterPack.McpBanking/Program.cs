@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Azure.Core;
+using Azure.Data.Tables;
 using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 
@@ -27,6 +28,15 @@ builder.Services.AddSingleton<TokenCredential>(string.IsNullOrWhiteSpace(clientI
     ? new DefaultAzureCredential(new DefaultAzureCredentialOptions { ExcludeManagedIdentityCredential = true })
     : new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(clientId)));
 builder.Services.AddHttpClient<PolicySearch>();
+
+// Cases come from disputes-api's "cases" table when configured (Storage:AccountName), else the built-in data.
+var storageAccount = builder.Configuration["Storage:AccountName"];
+builder.Services.AddSingleton(sp => new CaseLookup(
+    sp.GetRequiredService<BankData>(),
+    string.IsNullOrWhiteSpace(storageAccount)
+        ? null
+        : new TableClient(new Uri($"https://{storageAccount}.table.core.windows.net"), "cases", sp.GetRequiredService<TokenCredential>()),
+    sp.GetRequiredService<ILogger<CaseLookup>>()));
 
 // The Docker build context is this folder only, so wire OpenTelemetry here instead of via ServiceDefaults.
 var otel = builder.Services.AddOpenTelemetry()

@@ -134,7 +134,8 @@ public class DisputeRulesTests
     }
 
     private static BankingTools NewTools() =>
-        new(Bank, Rules, new CaseStore(), new AttachmentReader(), UnconfiguredSearch(), NullLogger<BankingTools>.Instance);
+        new(Bank, new CaseLookup(Bank, null, NullLogger<CaseLookup>.Instance), Rules, new CaseStore(), new AttachmentReader(),
+            UnconfiguredSearch(), NullLogger<BankingTools>.Instance);
 
     // No Search:Endpoint, so no network call is ever made; the guard rails run before the search does.
     private static PolicySearch UnconfiguredSearch() =>

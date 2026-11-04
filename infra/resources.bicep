@@ -13,6 +13,12 @@ param todoAgentName string = ''
 param todoAgentVersion string = ''
 param mcpTodoFqdn string = ''
 
+param disputesApiExists bool = false
+param disputesApiClientId string = ''
+param mcpBankingPrincipalId string = ''
+param principalId string = ''
+param principalType string = ''
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, location)
 
@@ -255,6 +261,27 @@ module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
   }
 }
 
+// Maple Bank dispute case system (Day 9)
+module disputes 'disputes.bicep' = if (!empty(foundryProjectEndpoint)) {
+  name: 'disputes'
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+    abbrs: abbrs
+    exists: disputesApiExists
+    containerAppsEnvironmentId: containerAppsEnvironment.id
+    containerRegistryName: containerRegistry.name
+    applicationInsightsConnectionString: monitoring.properties.ConnectionString
+    foundryProjectEndpoint: foundryProjectEndpoint
+    apiClientId: disputesApiClientId
+    mcpBankingPrincipalId: mcpBankingPrincipalId
+    principalId: principalId
+    principalType: principalType
+  }
+}
+
+output DISPUTES_API_FQDN string = empty(foundryProjectEndpoint) ? '' : disputes!.outputs.fqdn
 output AGENT_FQDN string = agentApp.outputs.fqdn
 output WEBUI_FQDN string = webuiApp.outputs.fqdn
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
