@@ -8,6 +8,9 @@ param location string
 
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, location)
 
+@description('Identity of the mcp-banking server; gets read access to the knowledge index')
+param mcpBankingPrincipalId string = ''
+
 @description('Location for the Azure AI Search service; defaults to the main location')
 param searchLocation string = location
 
@@ -392,6 +395,7 @@ module azureAiSearch '../search/azure_ai_search.bicep' = if (hasSearchConnection
     principalId: principalId
     principalType: principalType
     pipelinePrincipalId: pipelinePrincipalId
+    mcpBankingPrincipalId: mcpBankingPrincipalId
     location: searchLocation
   }
 }

@@ -1,1 +1,4 @@
 .azure.eval.lock
+
+# Dispute eval results (tools/agent-evals/run_dispute_evals.py)
+build/

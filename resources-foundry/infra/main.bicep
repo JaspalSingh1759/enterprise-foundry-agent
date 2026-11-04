@@ -147,6 +147,9 @@ var dependentResources = shouldCreateAcr ? union(aiProjectDependentResources, [
 
 // Search lives in its own region: East US 2 ran out of Search capacity (Nov 2026), and Canada Central
 // keeps the bank's knowledge documents in Canada. The models stay in East US 2.
+@description('Identity of the mcp-banking server (resources-mcp); it queries the knowledge index for the dispute agents')
+param mcpBankingPrincipalId string = ''
+
 @description('Location for the Azure AI Search service')
 param searchLocation string = location
 
@@ -158,6 +161,7 @@ module aiProject 'core/ai/ai-project.bicep' = if (!useExistingAiProject) {
     tags: tags
     location: aiDeploymentsLocation
     searchLocation: searchLocation
+    mcpBankingPrincipalId: mcpBankingPrincipalId
     aiFoundryProjectName: aiFoundryProjectName
     principalId: principalId
     principalType: principalType

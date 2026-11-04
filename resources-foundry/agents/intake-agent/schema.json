@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "dispute_type", "language", "merchant", "disputed_amount", "date_mentioned", "attachment_ids", "possible_fraud", "fraud_signals", "missing_information", "summary"],
+  "properties": {
+    "case_id": { "type": "string" },
+    "dispute_type": { "type": "string", "enum": ["duplicate_charge", "incorrect_amount", "credit_not_processed", "cancelled_recurring", "not_received", "unauthorised"] },
+    "language": { "type": "string", "enum": ["en", "fr"] },
+    "merchant": { "type": ["string", "null"], "description": "Merchant or statement descriptor named in the claim" },
+    "disputed_amount": { "type": ["number", "null"], "description": "Amount in CAD the customer mentions, if any" },
+    "date_mentioned": { "type": ["string", "null"], "description": "Date the customer mentions, as written" },
+    "attachment_ids": { "type": "array", "items": { "type": "string" } },
+    "possible_fraud": { "type": "boolean" },
+    "fraud_signals": { "type": "array", "items": { "type": "string" } },
+    "missing_information": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string" }
+  }
+}

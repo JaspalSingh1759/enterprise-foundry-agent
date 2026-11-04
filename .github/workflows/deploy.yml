@@ -35,6 +35,7 @@ jobs:
     outputs:
       mcp_fqdn: ${{ steps.mcp-deploy.outputs.MCP_FQDN }}
       mcp_banking_fqdn: ${{ steps.mcp-deploy.outputs.MCP_BANKING_FQDN }}
+      mcp_banking_principal_id: ${{ steps.mcp-deploy.outputs.MCP_BANKING_PRINCIPAL_ID }}
       key_vault_name: ${{ steps.mcp-deploy.outputs.KEY_VAULT_NAME }}
       key_vault_endpoint: ${{ steps.mcp-deploy.outputs.KEY_VAULT_ENDPOINT }}
 
@@ -76,6 +77,7 @@ jobs:
           MCP_FQDN=$(azd env get-value AZURE_RESOURCE_MCP_TODO_FQDN)
           echo "MCP_FQDN=$MCP_FQDN" >> $GITHUB_OUTPUT
           echo "MCP_BANKING_FQDN=$(azd env get-value AZURE_RESOURCE_MCP_BANKING_FQDN)" >> $GITHUB_OUTPUT
+          echo "MCP_BANKING_PRINCIPAL_ID=$(azd env get-value AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID)" >> $GITHUB_OUTPUT
           echo "KEY_VAULT_NAME=$(azd env get-value AZURE_KEY_VAULT_NAME)" >> $GITHUB_OUTPUT
           echo "KEY_VAULT_ENDPOINT=$(azd env get-value AZURE_KEY_VAULT_ENDPOINT)" >> $GITHUB_OUTPUT
           echo "Deployed MCP Server at: $MCP_FQDN"
@@ -136,6 +138,7 @@ jobs:
           azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azd env set AZURE_TENANT_ID ${{ secrets.AZURE_TENANT_ID }}
           azd env set AZURE_RESOURCE_MCP_TODO_FQDN $AZURE_RESOURCE_MCP_TODO_FQDN
+          azd env set AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID "${{ needs.deploy-mcp-server.outputs.mcp_banking_principal_id }}"
           azd env set AZURE_KEY_VAULT_NAME "${{ needs.deploy-mcp-server.outputs.key_vault_name }}"
           azd env set AZURE_KEY_VAULT_ENDPOINT "${{ needs.deploy-mcp-server.outputs.key_vault_endpoint }}"
           # Provision infrastructure first to ensure Bicep outputs are exported to azd environment

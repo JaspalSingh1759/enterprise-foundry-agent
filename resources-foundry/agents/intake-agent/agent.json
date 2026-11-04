@@ -1,0 +1,6 @@
+{
+  "name": "intake-agent",
+  "description": "Maple Bank disputes: reads a new case and classifies the claim. Step 1 of 3.",
+  "model": "gpt-5-nano",
+  "tools": ["get_case"]
+}

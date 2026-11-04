@@ -2,6 +2,9 @@ using System.Text.Json;
 
 using MafStarterPack.McpBanking;
 
+using Azure.Identity;
+
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Xunit;
@@ -122,8 +125,20 @@ public class DisputeRulesTests
         return (dispute, Bank.TransactionsByCard[dispute.CardId].First());
     }
 
+    internal static BankingTools NewToolsForTests() => NewTools();
+
+    internal static (string CaseId, string TransactionId) AnyCaseTransactionId()
+    {
+        var (dispute, transaction) = AnyCaseTransaction();
+        return (dispute.Id, transaction.Id);
+    }
+
     private static BankingTools NewTools() =>
-        new(Bank, Rules, new CaseStore(), new AttachmentReader(), NullLogger<BankingTools>.Instance);
+        new(Bank, Rules, new CaseStore(), new AttachmentReader(), UnconfiguredSearch(), NullLogger<BankingTools>.Instance);
+
+    // No Search:Endpoint, so no network call is ever made; the guard rails run before the search does.
+    private static PolicySearch UnconfiguredSearch() =>
+        new(new HttpClient(), new DefaultAzureCredential(), new ConfigurationBuilder().Build(), NullLogger<PolicySearch>.Instance);
 
     private static string FindRepoRoot()
     {

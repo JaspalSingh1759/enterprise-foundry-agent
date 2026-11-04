@@ -30,6 +30,9 @@ param principalType string
 @description('Service principal the CI/CD pipeline runs as; it builds the index and uploads the documents')
 param pipelinePrincipalId string = ''
 
+@description('Identity of the mcp-banking server: its search_policy tool queries the index for the dispute agents')
+param mcpBankingPrincipalId string = ''
+
 @description('Name for the AI Foundry search connection')
 param connectionName string
 
@@ -158,6 +161,17 @@ resource pipelineToSearchDataRoleAssignment 'Microsoft.Authorization/roleAssignm
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1407120a-92aa-4202-b7e9-c0e197c71c8f') // Search Index Data Reader
     principalId: pipelinePrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// mcp-banking's search_policy tool reads the index; it can't change it.
+resource mcpBankingToSearchDataRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(mcpBankingPrincipalId)) {
+  name: guid(searchService.id, mcpBankingPrincipalId, 'Search Index Data Reader')
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1407120a-92aa-4202-b7e9-c0e197c71c8f') // Search Index Data Reader
+    principalId: mcpBankingPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

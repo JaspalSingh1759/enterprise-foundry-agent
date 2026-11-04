@@ -1,0 +1,6 @@
+{
+  "name": "evidence-agent",
+  "description": "Maple Bank disputes: finds the transactions and reads the documents behind a claim. Step 2 of 3.",
+  "model": "gpt-5-mini",
+  "tools": ["get_case", "get_transactions", "get_merchant", "get_past_disputes", "read_attachment"]
+}

@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "dispute_type", "action", "eligible", "amount", "transaction_ids", "policy_sections", "policy_version", "within_time_limit", "needs_senior_approval", "explanation"],
+  "properties": {
+    "case_id": { "type": "string" },
+    "dispute_type": { "type": "string", "enum": ["duplicate_charge", "incorrect_amount", "credit_not_processed", "cancelled_recurring", "not_received", "unauthorised"] },
+    "action": { "type": "string", "enum": ["recommend_credit", "deny", "request_info", "route_to_fraud"] },
+    "eligible": { "type": "boolean" },
+    "amount": { "type": "number", "description": "Credit in CAD; 0 unless action is recommend_credit" },
+    "transaction_ids": { "type": "array", "items": { "type": "string" } },
+    "policy_sections": { "type": "array", "items": { "type": "string" }, "description": "Section numbers, e.g. [\"4.2\", \"3.1\"]" },
+    "policy_version": { "type": "string", "description": "From evaluate_dispute_rules" },
+    "within_time_limit": { "type": "boolean", "description": "From evaluate_dispute_rules" },
+    "needs_senior_approval": { "type": "boolean", "description": "From evaluate_dispute_rules" },
+    "explanation": { "type": "string" }
+  }
+}

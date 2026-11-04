@@ -1,0 +1,94 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "transaction_ids",
+    "primary_transaction_id",
+    "merchant_id",
+    "documents",
+    "merchant_contacted",
+    "fraud_indicators",
+    "genuine_indicators",
+    "evidence_gaps",
+    "summary"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string"
+    },
+    "transaction_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "primary_transaction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "merchant_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "attachment_id",
+          "kind",
+          "readable",
+          "key_facts"
+        ],
+        "properties": {
+          "attachment_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "readable": {
+            "type": "boolean"
+          },
+          "key_facts": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "merchant_contacted": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Whether the customer says they contacted the merchant; null if not mentioned"
+    },
+    "fraud_indicators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "genuine_indicators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_gaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string"
+    }
+  }
+}

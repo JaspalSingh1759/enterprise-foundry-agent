@@ -286,6 +286,12 @@ module mcpBanking 'br/public:avm/res/app/container-app:0.8.0' = {
             name: 'AZURE_CLIENT_ID'
             value: mcpBankingIdentity.outputs.clientId
           }
+          // The knowledge index lives in the Foundry tier (resources-foundry), which uses the same resource
+          // token, so its name is known here. That tier grants this identity Search Index Data Reader.
+          {
+            name: 'Search__Endpoint'
+            value: 'https://search-${resourceToken}.search.windows.net'
+          }
           {
             name: 'PORT'
             value: '8080'
@@ -323,5 +329,6 @@ output AZURE_RESOURCE_MCP_TODO_FQDN string = mcpTodo.outputs.fqdn
 output AZURE_RESOURCE_MCP_BANKING_ID string = mcpBanking.outputs.resourceId
 output AZURE_RESOURCE_MCP_BANKING_NAME string = mcpBanking.outputs.name
 output AZURE_RESOURCE_MCP_BANKING_FQDN string = mcpBanking.outputs.fqdn
+output AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID string = mcpBankingIdentity.outputs.principalId
 output AZURE_KEY_VAULT_NAME string = keyVault.name
 output AZURE_KEY_VAULT_ENDPOINT string = keyVault.properties.vaultUri

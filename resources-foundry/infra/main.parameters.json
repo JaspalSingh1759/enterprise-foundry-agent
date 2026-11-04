@@ -29,6 +29,9 @@
       "principalType": {
         "value": "${AZURE_PRINCIPAL_TYPE}"
       },
+      "mcpBankingPrincipalId": {
+        "value": "${AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID=}"
+      },
       "pipelinePrincipalId": {
         "value": "${AZURE_PIPELINE_PRINCIPAL_ID=}"
       },

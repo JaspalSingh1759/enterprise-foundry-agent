@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
+using Azure.Core;
+using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 
 using MafStarterPack.McpBanking;
@@ -16,6 +18,15 @@ builder.Services.AddSingleton(new BankData(Path.Combine(AppContext.BaseDirectory
 builder.Services.AddSingleton(new DisputeRules(Path.Combine(AppContext.BaseDirectory, "rules", "dispute-rules.json")));
 builder.Services.AddSingleton<CaseStore>();
 builder.Services.AddSingleton<AttachmentReader>();
+
+// Policy search signs in to Azure AI Search with the app's user-assigned identity in Azure (AZURE_CLIENT_ID),
+// and with the developer's own sign-in locally. Picking explicitly avoids DefaultAzureCredential probing for
+// a managed identity on a laptop, which waits for the VM metadata endpoint to time out.
+var clientId = builder.Configuration["AZURE_CLIENT_ID"];
+builder.Services.AddSingleton<TokenCredential>(string.IsNullOrWhiteSpace(clientId)
+    ? new DefaultAzureCredential(new DefaultAzureCredentialOptions { ExcludeManagedIdentityCredential = true })
+    : new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(clientId)));
+builder.Services.AddHttpClient<PolicySearch>();
 
 // The Docker build context is this folder only, so wire OpenTelemetry here instead of via ServiceDefaults.
 var otel = builder.Services.AddOpenTelemetry()

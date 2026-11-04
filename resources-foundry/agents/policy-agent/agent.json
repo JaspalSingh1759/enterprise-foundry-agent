@@ -1,0 +1,6 @@
+{
+  "name": "policy-agent",
+  "description": "Maple Bank disputes: applies the policy and the rules engine and recommends an outcome for an analyst. Step 3 of 3.",
+  "model": "gpt-5-mini",
+  "tools": ["get_case", "get_transactions", "read_attachment", "search_policy", "evaluate_dispute_rules"]
+}

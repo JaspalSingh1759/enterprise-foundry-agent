@@ -3,3 +3,6 @@
 src/
 
 *.md
+
+# The agents' instructions are code (agents as code); keep them despite the rule above.
+!agents/*/instructions.md
