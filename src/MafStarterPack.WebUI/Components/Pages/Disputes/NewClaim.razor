@@ -1,0 +1,84 @@
+@page "/disputes/new"
+@using System.Text.Json.Nodes
+@using MafStarterPack.WebUI.Disputes
+@inherits DisputesPage
+
+<PageTitle>Customer simulator</PageTitle>
+
+<div class="dc-page">
+    <DisputesHeader User="@User" />
+
+    @if (Ready)
+    {
+        <h1>Customer simulator</h1>
+        <p class="dc-muted">
+            Plays the customer: files a new dispute on a synthetic card. The case is recorded as submitted by you, so
+            someone else must approve it (segregation of duties).
+        </p>
+
+        @if (error is not null)
+        {
+            <p class="dc-error">@error</p>
+        }
+
+        <section class="dc-card">
+            <label for="card">Card</label>
+            <select id="card" @bind="cardId">
+                <option value="">Choose a card…</option>
+                @foreach (var card in cards)
+                {
+                    <option value="@((string?)card["id"])">
+                        @((string?)card["id"]) · @((string?)card["customer"]) · @((string?)card["product"]) ending @((string?)card["last4"]) (@((string?)card["language"]))
+                    </option>
+                }
+            </select>
+
+            <label for="claim">The customer's claim</label>
+            <textarea id="claim" rows="5" @bind="claim"
+                      placeholder="For example: I was charged twice for the same purchase at BestElectro on Oct 21. I only bought it once."></textarea>
+
+            <button class="dc-button" disabled="@busy" @onclick="SubmitAsync">Submit the claim</button>
+        </section>
+    }
+</div>
+
+@code {
+    private List<JsonNode> cards = [];
+    private string cardId = "";
+    private string claim = "";
+    private string? error;
+    private bool busy;
+
+    protected override async Task LoadAsync()
+    {
+        var result = await Api.CardsAsync();
+        if (result.Ok)
+        {
+            cards = result.Body!.AsArray().Where(n => n is not null).Select(n => n!).ToList();
+        }
+        else
+        {
+            error = result.Error;
+        }
+    }
+
+    private Task SubmitAsync() => RunAsync(async () =>
+    {
+        if (cardId.Length == 0 || claim.Trim().Length == 0)
+        {
+            error = "Choose a card and write the claim.";
+            return;
+        }
+        busy = true;
+        var result = await Api.CreateAsync(cardId, claim);
+        busy = false;
+        if (result.Ok)
+        {
+            Nav.NavigateTo($"/disputes/{(string?)result.Body?["id"]}");
+        }
+        else
+        {
+            error = result.Error;
+        }
+    });
+}

@@ -18,7 +18,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 API="2024-07-01"
 ALIAS_API="2025-08-01-preview"   # index aliases are still preview
 
-azd_value() { (cd "$HERE/.." && azd env get-value "$1" 2>/dev/null) || true; }
+# azd prints "ERROR: key not found" on stdout for a missing key, so use the output only when it succeeds.
+azd_value() { local out; if out="$(cd "$HERE/.." && azd env get-value "$1" 2>/dev/null)"; then echo "$out"; fi; }
 
 export SEARCH_SERVICE="${SEARCH_SERVICE:-$(azd_value AZURE_AI_SEARCH_SERVICE_NAME)}"
 export STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-$(azd_value AZURE_STORAGE_ACCOUNT_NAME)}"

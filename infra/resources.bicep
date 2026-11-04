@@ -15,6 +15,7 @@ param mcpTodoFqdn string = ''
 
 param disputesApiExists bool = false
 param disputesApiClientId string = ''
+param disputesConsoleClientId string = ''
 param mcpBankingPrincipalId string = ''
 param principalId string = ''
 param principalType string = ''
@@ -195,6 +196,22 @@ module agentApp 'br/public:avm/res/app/container-app:0.8.0' = {
   }
 }
 
+// The dispute console (/disputes pages): analysts sign in with Entra ID (scripts/entra/create-disputes-console-app.sh)
+// and the console calls disputes-api with a token for the analyst. The console's app registration has no secret:
+// the web UI's managed identity is its credential (a federated identity credential). Without a console app
+// registration these settings are left out and the console pages can't sign anyone in.
+var disputeConsoleSettings = empty(disputesConsoleClientId) || empty(disputesApiClientId) || empty(foundryProjectEndpoint) ? [] : [
+  { name: 'AzureAd__Instance', value: environment().authentication.loginEndpoint }
+  { name: 'AzureAd__TenantId', value: subscription().tenantId }
+  { name: 'AzureAd__ClientId', value: disputesConsoleClientId }
+  { name: 'AzureAd__CallbackPath', value: '/signin-oidc' }
+  { name: 'AzureAd__ClientCredentials__0__SourceType', value: 'SignedAssertionFromManagedIdentity' }
+  { name: 'AzureAd__ClientCredentials__0__ManagedIdentityClientId', value: webuiIdentity.properties.clientId }
+  { name: 'AzureAd__ClientCredentials__0__TokenExchangeUrl', value: 'api://AzureADTokenExchange' }
+  { name: 'DisputesApi__BaseUrl', value: 'https://${disputes!.outputs.fqdn}/' }
+  { name: 'DisputesApi__Scope', value: 'api://${disputesApiClientId}/access_as_user' }
+]
+
 // Deploy WebUI Container App
 module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
   name: 'webui'
@@ -215,7 +232,7 @@ module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
           cpu: json('0.5')
           memory: '1.0Gi'
         }
-        env: [
+        env: concat([
           {
             name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
             value: monitoring.properties.ConnectionString
@@ -240,9 +257,12 @@ module webuiApp 'br/public:avm/res/app/container-app:0.8.0' = {
             name: 'services__agent__https__0'
             value: 'https://${agentApp.outputs.fqdn}'
           }
-        ]
+        ], disputeConsoleSettings)
       }
     ]
+    // Blazor Server keeps a live connection per user, and the signed-in analyst's token cache is in memory:
+    // each user must stay on the same replica.
+    stickySessionsAffinity: 'sticky'
     managedIdentities: {
       systemAssigned: false
       userAssignedResourceIds: [

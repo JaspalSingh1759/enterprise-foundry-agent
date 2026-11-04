@@ -7,7 +7,7 @@ public sealed record CustomerInfo(string Id, string FirstName, string Language);
 
 public sealed record MerchantInfo(string Id, string Name);
 
-public sealed record CardInfo(string Id, string CustomerId, string Last4);
+public sealed record CardInfo(string Id, string CustomerId, string Product, string Last4);
 
 public sealed record TransactionInfo(string Id, string CardId, DateOnly TxnDate, string MerchantId, decimal Amount);
 

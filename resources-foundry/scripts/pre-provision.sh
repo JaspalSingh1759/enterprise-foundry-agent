@@ -32,7 +32,9 @@ fi
 
 # Role assignments need the service principal's OBJECT id. The pipeline's client id (appId) looks the same
 # but matches no identity, so the roles silently do nothing. az ad sp show accepts either and returns the object id.
-pipelinePrincipal=$(azd env get-value AZURE_PIPELINE_PRINCIPAL_ID 2>/dev/null || echo "")
+# azd prints "ERROR: key not found" on stdout for a missing key, so use the output only when it succeeds.
+pipelinePrincipal=""
+if value=$(azd env get-value AZURE_PIPELINE_PRINCIPAL_ID 2>/dev/null); then pipelinePrincipal="$value"; fi
 if [ -n "$pipelinePrincipal" ]; then
     objectId=$(az ad sp show --id "$pipelinePrincipal" --query id -o tsv 2>/dev/null || echo "")
     if [ -n "$objectId" ] && [ "$objectId" != "$pipelinePrincipal" ]; then

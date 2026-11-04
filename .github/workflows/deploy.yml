@@ -235,5 +235,6 @@ jobs:
           # variable. Without it, disputes-api deploys with internal ingress only, never public without sign-in.
           azd env set AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID "${{ needs.deploy-mcp-server.outputs.mcp_banking_principal_id }}"
           azd env set DISPUTES_API_CLIENT_ID "${{ vars.DISPUTES_API_CLIENT_ID }}"
+          azd env set DISPUTES_CONSOLE_CLIENT_ID "${{ vars.DISPUTES_CONSOLE_CLIENT_ID }}"
           azd provision --no-prompt --no-state
           azd deploy --no-prompt

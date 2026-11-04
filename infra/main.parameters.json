@@ -35,6 +35,9 @@
     "disputesApiClientId": {
       "value": "${DISPUTES_API_CLIENT_ID=}"
     },
+    "disputesConsoleClientId": {
+      "value": "${DISPUTES_CONSOLE_CLIENT_ID=}"
+    },
     "mcpBankingPrincipalId": {
       "value": "${AZURE_RESOURCE_MCP_BANKING_PRINCIPAL_ID=}"
     },

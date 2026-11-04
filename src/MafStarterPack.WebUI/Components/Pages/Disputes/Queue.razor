@@ -1,0 +1,119 @@
+@page "/disputes"
+@using System.Text.Json.Nodes
+@using MafStarterPack.WebUI.Disputes
+@inherits DisputesPage
+
+<PageTitle>Dispute queue</PageTitle>
+
+<div class="dc-page">
+    <DisputesHeader User="@User" />
+
+    @if (Ready)
+    {
+        <h1>Work queue</h1>
+
+        <div class="dc-tabs">
+            @foreach (var (status, label) in Tabs)
+            {
+                <button class="@(status == selected ? "active" : "")" @onclick="() => SelectAsync(status)">@label</button>
+            }
+        </div>
+
+        @if (error is not null)
+        {
+            <p class="dc-error">@error</p>
+        }
+        else if (cases is null)
+        {
+            <p class="dc-muted">Loading…</p>
+        }
+        else if (cases.Count == 0)
+        {
+            <div class="dc-empty">
+                <p>No cases here.</p>
+                @if (selected is null)
+                {
+                    <button class="dc-button" disabled="@busy" @onclick="SeedAsync">Load the 40 demo cases</button>
+                }
+            </div>
+        }
+        else
+        {
+            <table class="dc-table">
+                <thead>
+                    <tr><th>Case</th><th>Status</th><th>Submitted</th><th>Dispute type</th><th>Recommendation</th><th class="num">Amount</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in cases)
+                    {
+                        <tr @onclick='() => Nav.NavigateTo($"/disputes/{(string?)c["id"]}")'>
+                            <td><a href="/disputes/@((string?)c["id"])">@((string?)c["id"])</a></td>
+                            <td><span class="dc-status @((string?)c["status"])">@Pretty((string?)c["status"])</span></td>
+                            <td>@((string?)c["submitted"])</td>
+                            <td>@Pretty((string?)c["dispute_type"])</td>
+                            <td>@Pretty((string?)c["action"])</td>
+                            <td class="num">@Money(c["amount"])</td>
+                            <td>@if ((bool?)c["needs_senior_approval"] == true) { <span class="dc-flag">Senior approval</span> }</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</div>
+
+@code {
+    private static readonly (string? Status, string Label)[] Tabs =
+    [
+        ("AwaitingApproval", "Awaiting approval"), ("New", "New"), ("NeedsManualHandling", "Needs manual handling"),
+        ("InfoRequested", "Info requested"), ("Closed", "Closed"), (null, "All"),
+    ];
+
+    private string? selected = "AwaitingApproval";
+    private List<JsonNode>? cases;
+    private string? error;
+    private bool busy;
+
+    protected override async Task LoadAsync()
+    {
+        cases = null;
+        error = null;
+        var result = await Api.ListAsync(selected);
+        if (result.Ok)
+        {
+            cases = result.Body!.AsArray().Where(n => n is not null).Select(n => n!).ToList();
+        }
+        else
+        {
+            error = result.Error;
+        }
+    }
+
+    private Task SelectAsync(string? status)
+    {
+        selected = status;
+        return RunAsync(LoadAsync);
+    }
+
+    private Task SeedAsync() => RunAsync(async () =>
+    {
+        busy = true;
+        var result = await Api.SeedAsync();
+        busy = false;
+        error = result.Ok ? null : result.Error;
+        if (result.Ok)
+        {
+            selected = "New";
+            await LoadAsync();
+        }
+    });
+
+    internal static string Pretty(string? value) =>
+        string.IsNullOrEmpty(value) ? "" : System.Text.RegularExpressions.Regex.Replace(value.Replace('_', ' '), "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant() switch
+        {
+            var s => char.ToUpperInvariant(s[0]) + s[1..],
+        };
+
+    internal static string Money(JsonNode? amount) =>
+        amount is null ? "" : ((decimal?)amount)?.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-CA")) ?? "";
+}

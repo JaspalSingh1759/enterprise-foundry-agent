@@ -180,6 +180,20 @@ app.MapGet("/cases/{id}", async (HttpRequest request, string id, CaseRepository 
     });
 });
 
+// Cards a simulated customer can file a claim against (customer simulator page). First names only.
+app.MapGet("/reference/cards", (HttpRequest request, BankReference bank) =>
+{
+    if (CurrentUser.From(request, isDevelopment) is null)
+    {
+        return Results.Problem("sign in first", statusCode: StatusCodes.Status401Unauthorized);
+    }
+    return Results.Ok(bank.Cards.Values.OrderBy(c => c.Id).Select(c => new
+    {
+        id = c.Id, product = c.Product, last4 = c.Last4,
+        customer = bank.Customers[c.CustomerId].FirstName, language = bank.Customers[c.CustomerId].Language,
+    }));
+});
+
 // ── Investigation: the agents run here, and only here ──────────────────────────────────────────────────────
 
 app.MapPost("/cases/{id}/investigate", async (HttpRequest request, string id, CaseRepository cases, DisputeWorkflow workflow,

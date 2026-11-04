@@ -24,6 +24,8 @@ param disputesApiExists bool = false
 @description('Client ID of the disputes-api Entra app registration (scripts/entra/create-disputes-app.sh)')
 param disputesApiClientId string = ''
 param mcpBankingPrincipalId string = ''
+@description('Client ID of the dispute console Entra app registration (scripts/entra/create-disputes-console-app.sh)')
+param disputesConsoleClientId string = ''
 
 param principalId string = ''
 param principalType string = ''
@@ -54,6 +56,7 @@ module resources 'resources.bicep' = {
     mcpTodoFqdn: mcpTodoFqdn
     disputesApiExists: disputesApiExists
     disputesApiClientId: disputesApiClientId
+    disputesConsoleClientId: disputesConsoleClientId
     mcpBankingPrincipalId: mcpBankingPrincipalId
     principalId: principalId
     principalType: principalType

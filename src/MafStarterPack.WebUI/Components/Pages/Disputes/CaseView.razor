@@ -1,0 +1,241 @@
+@page "/disputes/{Id}"
+@using System.Text.Json.Nodes
+@using MafStarterPack.WebUI.Disputes
+@inherits DisputesPage
+
+<PageTitle>@Id</PageTitle>
+
+<div class="dc-page">
+    <DisputesHeader User="@User" />
+
+    @if (Ready)
+    {
+        <p><a href="/disputes">← Work queue</a></p>
+
+        @if (error is not null)
+        {
+            <p class="dc-error">@error</p>
+        }
+        @if (notice is not null)
+        {
+            <p class="dc-notice">@notice</p>
+        }
+
+        @if (c is not null)
+        {
+            <div class="dc-title">
+                <h1>@Id</h1>
+                <span class="dc-status @Status">@Queue.Pretty(Status)</span>
+            </div>
+            <p class="dc-muted">
+                Submitted @((string?)c["submitted"]) by @((string?)c["submitted_by"]) · card @((string?)c["card_id"]) · language @((string?)c["language"])
+            </p>
+
+            <section class="dc-card">
+                <h2>The customer's claim</h2>
+                <blockquote>@((string?)c["claim"])</blockquote>
+            </section>
+
+            @* ── What the analyst can do now ── *@
+            @if (busy)
+            {
+                <section class="dc-card dc-working">@busyText</section>
+            }
+            else if (Status is "New" or "InfoRequested" or "NeedsManualHandling")
+            {
+                <section class="dc-card">
+                    @if ((string?)c["manual_handling_reason"] is { } reason)
+                    {
+                        <p class="dc-error">The last investigation needs manual handling: @reason</p>
+                    }
+                    <button class="dc-button" @onclick="InvestigateAsync">Investigate with the agents</button>
+                    <span class="dc-muted">Runs intake → evidence → policy. Takes about a minute.</span>
+                </section>
+            }
+            else if (Status == "AwaitingApproval" && Draft is not null)
+            {
+                <section class="dc-card dc-decide">
+                    <h2>Your decision</h2>
+                    <button class="dc-button" @onclick="ApproveAsync">@ApproveLabel</button>
+                    <div class="dc-row">
+                        <textarea @bind="rejectReason" placeholder="Why you disagree with the recommendation (sent to the customer)"></textarea>
+                        <button class="dc-button secondary" @onclick="RejectAsync">Reject and deny the dispute</button>
+                    </div>
+                    <div class="dc-row">
+                        <textarea @bind="infoNeeded" placeholder="What the customer needs to send"></textarea>
+                        <button class="dc-button secondary" @onclick="RequestInfoAsync">Ask the customer for information</button>
+                    </div>
+                    <p class="dc-muted">disputes-api checks your role (credits over the senior threshold need a senior analyst) and that you didn't submit this case.</p>
+                </section>
+            }
+
+            @* ── The agents' recommendation ── *@
+            @if (Draft is { } d)
+            {
+                <section class="dc-card">
+                    <h2>Recommendation <span class="dc-muted">(policy agent)</span></h2>
+                    <dl class="dc-facts">
+                        <dt>Action</dt><dd><strong>@Queue.Pretty((string?)d["action"])</strong></dd>
+                        <dt>Amount</dt><dd>@Queue.Money(d["amount"])</dd>
+                        <dt>Policy</dt><dd>sections @Join(d["policy_sections"]) · version @((string?)d["policy_version"])</dd>
+                        <dt>Within time limit</dt><dd>@YesNo(d["within_time_limit"])</dd>
+                        <dt>Senior approval</dt><dd>@YesNo(d["needs_senior_approval"])</dd>
+                        <dt>Transactions</dt><dd>@Join(d["transaction_ids"])</dd>
+                    </dl>
+                    <p>@((string?)d["explanation"])</p>
+                </section>
+            }
+
+            @if (c["evidence"] is JsonObject ev)
+            {
+                <section class="dc-card">
+                    <h2>Evidence <span class="dc-muted">(evidence agent)</span></h2>
+                    <p>@((string?)ev["summary"])</p>
+                    @if (ev["documents"] is JsonArray docs && docs.Count > 0)
+                    {
+                        <h3>Documents</h3>
+                        <ul>
+                            @foreach (var doc in docs)
+                            {
+                                <li><strong>@((string?)doc?["attachment_id"]) (@((string?)doc?["kind"]))</strong>
+                                    @(((bool?)doc?["readable"]) == false ? " · unreadable" : "") · @((string?)doc?["key_facts"])</li>
+                            }
+                        </ul>
+                    }
+                    <dl class="dc-facts">
+                        <dt>Merchant contacted</dt><dd>@YesNo(ev["merchant_contacted"])</dd>
+                        <dt>Fraud indicators</dt><dd>@List(ev["fraud_indicators"])</dd>
+                        <dt>Genuine indicators</dt><dd>@List(ev["genuine_indicators"])</dd>
+                        <dt>Evidence gaps</dt><dd>@List(ev["evidence_gaps"])</dd>
+                    </dl>
+                </section>
+            }
+
+            @if (c["intake"] is JsonObject intake)
+            {
+                <section class="dc-card">
+                    <h2>Intake <span class="dc-muted">(intake agent)</span></h2>
+                    <dl class="dc-facts">
+                        <dt>Dispute type</dt><dd>@Queue.Pretty((string?)intake["dispute_type"])</dd>
+                        <dt>Merchant</dt><dd>@((string?)intake["merchant"])</dd>
+                        <dt>Amount claimed</dt><dd>@Queue.Money(intake["disputed_amount"])</dd>
+                        <dt>Possible fraud</dt><dd>@YesNo(intake["possible_fraud"])</dd>
+                        <dt>Missing</dt><dd>@List(intake["missing_information"])</dd>
+                    </dl>
+                </section>
+            }
+
+            @if ((string?)c["decision"] is { } decision)
+            {
+                <section class="dc-card">
+                    <h2>Decision</h2>
+                    <p>@Queue.Pretty(decision) by @((string?)c["decided_by"]) at @((string?)c["decided_at"])</p>
+                    @if ((string?)c["decision_reason"] is { } why)
+                    {
+                        <p>Reason: @why</p>
+                    }
+                </section>
+            }
+
+            <section class="dc-card">
+                <h2>Audit trail <span class="dc-muted">(append-only, immutable in Azure)</span></h2>
+                <table class="dc-table compact">
+                    <thead><tr><th>Time (UTC)</th><th>Actor</th><th>Event</th><th>Details</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in Audit)
+                        {
+                            <tr>
+                                <td>@(((string?)a["ts"])?[..19].Replace('T', ' '))</td>
+                                <td>@((string?)a["actor"])</td>
+                                <td>@((string?)a["action"])</td>
+                                <td class="dc-details">@Details(a)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private JsonObject? c;
+    private string? error;
+    private string? notice;
+    private bool busy;
+    private string busyText = "";
+    private string rejectReason = "";
+    private string infoNeeded = "";
+
+    private string? Status => (string?)c?["status"];
+    private JsonObject? Draft => c?["draft"] as JsonObject;
+    private IEnumerable<JsonObject> Audit => (c?["audit"] as JsonArray)?.OfType<JsonObject>() ?? [];
+
+    private string ApproveLabel => (string?)Draft?["action"] switch
+    {
+        "recommend_credit" => $"Approve: credit {Queue.Money(Draft?["amount"])}",
+        "deny" => "Approve: deny the dispute",
+        "request_info" => "Approve: ask the customer for information",
+        "route_to_fraud" => "Approve: send to the fraud team",
+        _ => "Approve",
+    };
+
+    protected override async Task LoadAsync()
+    {
+        var result = await Api.GetAsync(Id);
+        if (result.Ok)
+        {
+            c = result.Body as JsonObject;
+        }
+        else
+        {
+            error = result.Status == 404 ? $"There is no case {Id}." : result.Error;
+        }
+    }
+
+    private Task InvestigateAsync() => ActAsync("The intake, evidence and policy agents are working on the case…",
+                                                () => Api.InvestigateAsync(Id), "Investigation finished.");
+
+    private Task ApproveAsync() => ActAsync("Approving…", () => Api.ApproveAsync(Id), "Approved. The customer's letter has been sent.");
+
+    private Task RejectAsync() => ActAsync("Rejecting…", () => Api.RejectAsync(Id, rejectReason), "Rejected. The customer's letter has been sent.");
+
+    private Task RequestInfoAsync() => ActAsync("Asking the customer…", () => Api.RequestInfoAsync(Id, infoNeeded), "Information requested from the customer.");
+
+    private Task ActAsync(string working, Func<Task<ApiResult>> call, string done) => RunAsync(async () =>
+    {
+        busy = true;
+        busyText = working;
+        error = notice = null;
+        StateHasChanged();
+        var result = await call();
+        busy = false;
+        if (result.Ok)
+        {
+            notice = (string?)result.Body?["failure"] is { } failure ? $"Needs manual handling: {failure}" : done;
+        }
+        else
+        {
+            error = result.Error; // e.g. "a credit of 1298.37 CAD is over 1000.00 CAD and needs a senior analyst"
+        }
+        await LoadAsync();
+    });
+
+    private static string Join(JsonNode? array) =>
+        array is JsonArray a ? string.Join(", ", a.Select(n => (string?)n)) : "";
+
+    private static string List(JsonNode? array) =>
+        array is JsonArray a && a.Count > 0 ? string.Join("; ", a.Select(n => (string?)n)) : "none";
+
+    private static string YesNo(JsonNode? value) =>
+        value is null ? "not stated" : (bool?)value == true ? "yes" : "no";
+
+    private static string Details(JsonObject a)
+    {
+        string[] keys = ["agent_version", "model", "tools", "draft_action", "amount", "posting_id", "letter", "reason", "status", "failure", "note"];
+        return string.Join(" · ", keys.Where(k => a[k] is not null && a[k]!.ToJsonString() != "null")
+                                      .Select(k => $"{k}: {(a[k] is JsonArray arr ? string.Join(", ", arr.Select(n => (string?)n)) : a[k]!.ToString())}"));
+    }
+}

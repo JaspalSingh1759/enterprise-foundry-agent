@@ -1,0 +1,29 @@
+@using System.Security.Claims
+@using MafStarterPack.WebUI.Disputes
+@inject DisputesClient Api
+
+<header class="dc-header">
+    <div class="dc-brand">Maple Bank <span>Card Disputes</span></div>
+    <nav>
+        <NavLink href="/disputes" Match="NavLinkMatch.All">Queue</NavLink>
+        <NavLink href="/disputes/new">Customer simulator</NavLink>
+    </nav>
+    <div class="dc-user">
+        @if (Api.SignInEnabled)
+        {
+            <span title="Your app roles (Analyst / SeniorAnalyst) are checked by disputes-api on every action">@Name</span>
+            <a href="/signout">Sign out</a>
+        }
+        else
+        {
+            <span class="dc-muted">Local development: calls use your Azure CLI sign-in</span>
+        }
+    </div>
+</header>
+<p class="dc-fictional">Maple Bank is fictional. All customers, cards and cases are synthetic.</p>
+
+@code {
+    [Parameter] public ClaimsPrincipal? User { get; set; }
+
+    private string Name => User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name ?? "";
+}
