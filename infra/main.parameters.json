@@ -49,6 +49,9 @@
     },
     "principalType": {
       "value": "${AZURE_PRINCIPAL_TYPE}"
+    },
+    "alertEmail": {
+      "value": "${ALERT_EMAIL=}"
     }
   }
 }

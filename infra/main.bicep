@@ -30,6 +30,9 @@ param disputesConsoleClientId string = ''
 param principalId string = ''
 param principalType string = ''
 
+@description('Who gets the alert emails (Day 12)')
+param alertEmail string = ''
+
 var tags = username == '' ? {
   'azd-env-name': environmentName
 } : {
@@ -60,6 +63,7 @@ module resources 'resources.bicep' = {
     mcpBankingPrincipalId: mcpBankingPrincipalId
     principalId: principalId
     principalType: principalType
+    alertEmail: alertEmail
   }
 }
 

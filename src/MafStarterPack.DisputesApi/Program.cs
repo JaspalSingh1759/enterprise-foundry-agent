@@ -222,6 +222,7 @@ app.MapPost("/cases/{id}/investigate", async (HttpRequest request, string id, Ca
     }
     await audit.EventAsync(c.Id, $"user:{user.Id}", "investigation_started", ct);
 
+    var started = DateTimeOffset.UtcNow;
     var result = await workflow.RunAsync(c, ct);
 
     c.IntakeJson = result.Intake?.Output.ToJsonString();
@@ -234,6 +235,10 @@ app.MapPost("/cases/{id}/investigate", async (HttpRequest request, string id, Ca
     {
         ["status"] = c.Status, ["failure"] = result.Failure,
     });
+    // The signal for the SLO, the manual-handling alert and the dashboard (infra/monitoring.bicep). IDs and
+    // statuses only: no claim text or agent output in telemetry.
+    app.Logger.LogInformation("Case {CaseId}: investigation finished as {Status} in {Seconds} s.",
+                              c.Id, c.Status, Math.Round((DateTimeOffset.UtcNow - started).TotalSeconds, 1));
 
     return Results.Ok(new { id = c.Id, status = c.Status, draft = Parse(c.DraftJson), failure = result.Failure });
 });
@@ -275,6 +280,7 @@ app.MapPost("/cases/{id}/approve", async (HttpRequest request, string id, CaseRe
     {
         ["draft_action"] = action, ["amount"] = amount, ["roles"] = user.Roles.Order().ToArray(),
     });
+    app.Logger.LogInformation("Case {CaseId}: decided {Decision} (draft {DraftAction}).", c.Id, c.Decision, action);
 
     string? posting = null;
     if (action == "recommend_credit")
@@ -331,6 +337,8 @@ app.MapPost("/cases/{id}/reject", async (HttpRequest request, string id, Decisio
     {
         ["reason"] = body.Reason, ["draft_action"] = (string?)draft?["action"],
     });
+    // An analyst overruling the agents: the override-rate signal.
+    app.Logger.LogInformation("Case {CaseId}: decided {Decision} (draft {DraftAction}).", c.Id, c.Decision, (string?)draft?["action"]);
     var letter = await letters.SendAsync(c, draft, "dispute-denied", ct, reason: body.Reason);
     await audit.EventAsync(c.Id, "disputes-api", "letter_sent", ct, new Dictionary<string, object?> { ["letter"] = letter });
     return Results.Ok(new { id = c.Id, status = c.Status, letter });
@@ -364,6 +372,7 @@ app.MapPost("/cases/{id}/request-info", async (HttpRequest request, string id, D
     }
     var draft = ParseObject(c.DraftJson);
     await audit.EventAsync(c.Id, $"user:{user.Id}", "request_info", ct, new Dictionary<string, object?> { ["information_needed"] = body.Reason });
+    app.Logger.LogInformation("Case {CaseId}: decided {Decision} (draft {DraftAction}).", c.Id, c.Decision, (string?)draft?["action"]);
     var letter = await letters.SendAsync(c, draft, "information-needed", ct, informationNeeded: body.Reason);
     await audit.EventAsync(c.Id, "disputes-api", "letter_sent", ct, new Dictionary<string, object?> { ["letter"] = letter });
     return Results.Ok(new { id = c.Id, status = c.Status, letter });

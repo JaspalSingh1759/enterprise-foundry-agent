@@ -20,6 +20,9 @@ param mcpBankingPrincipalId string = ''
 param principalId string = ''
 param principalType string = ''
 
+@description('Who gets the alert emails (Day 12). Empty = alerts fire but notify nobody')
+param alertEmail string = ''
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, location)
 
@@ -298,6 +301,18 @@ module disputes 'disputes.bicep' = if (!empty(foundryProjectEndpoint)) {
     mcpBankingPrincipalId: mcpBankingPrincipalId
     principalId: principalId
     principalType: principalType
+  }
+}
+
+// Observability as code (Day 12): action group, alerts and the operations workbook
+module monitoringRules 'monitoring.bicep' = {
+  name: 'monitoring'
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+    abbrs: abbrs
+    alertEmail: alertEmail
   }
 }
 
