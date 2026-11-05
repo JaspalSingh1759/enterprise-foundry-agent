@@ -1,0 +1,84 @@
+<!--
+  AI gateway policy for the Foundry Responses API (Day 15).
+
+  1. Who is calling? Validate the caller's Entra token (no subscription keys) and map its app ID to a team.
+  2. Token limit per team: a rate (tokens per minute) and a daily quota. Over the rate: 429 + Retry-After.
+     Over the quota: 403.
+  3. Token metrics per team and agent, to Application Insights (cost allocation).
+  4. Call Foundry as the GATEWAY's managed identity, not the caller's.
+     Response headers are prefixed x-gateway- so they don't mix with Foundry's own x-ratelimit-* headers
+     (the model deployment's quota).
+
+  What the gateway sees: one request per AGENT TURN, and the turn's total tokens (the response's "usage").
+  What it can't see: the model calls and tool calls inside the turn, which Foundry runs. So it can't stop a turn
+  halfway, and a limit is checked between turns, not between model calls.
+
+  {{tenant-id}} and {{disputes-caller-id}} are named values (infra/gateway/gateway.bicep).
+-->
+<policies>
+    <inbound>
+        <base />
+        <validate-azure-ad-token tenant-id="{{tenant-id}}" header-name="Authorization" failed-validation-httpcode="401"
+                                 failed-validation-error-message="A valid Entra token for https://ai.azure.com is required."
+                                 output-token-variable-name="caller">
+            <client-application-ids>
+                <!-- disputes-api's managed identity: the "disputes" team -->
+                <application-id>{{disputes-caller-id}}</application-id>
+                <!-- Azure CLI: engineers trying agents out, the "sandbox" team -->
+                <application-id>04b07795-8ddb-461a-bbee-02f9e1bf7b46</application-id>
+            </client-application-ids>
+            <audiences>
+                <audience>https://ai.azure.com</audience>
+            </audiences>
+        </validate-azure-ad-token>
+
+        <set-variable name="callerAppId" value="@(((Jwt)context.Variables["caller"]).Claims.GetValueOrDefault("appid", ((Jwt)context.Variables["caller"]).Claims.GetValueOrDefault("azp", "unknown")))" />
+        <set-variable name="team" value="@((string)context.Variables["callerAppId"] == "{{disputes-caller-id}}" ? "disputes" : "sandbox")" />
+        <set-variable name="agent" value="@{
+            var body = context.Request.Body?.As<JObject>(preserveContent: true);
+            return (string)body?["agent_reference"]?["name"] ?? (string)body?["model"] ?? "unknown";
+        }" />
+
+        <!-- Production gets a budget sized from real use (busiest eval hour: about 1M tokens); the sandbox gets a
+             small one, so one engineer's experiment can't use up the quota production depends on. -->
+        <choose>
+            <when condition="@((string)context.Variables["team"] == "disputes")">
+                <llm-token-limit counter-key="team-disputes" tokens-per-minute="200000"
+                                 token-quota="5000000" token-quota-period="Daily" estimate-prompt-tokens="false"
+                                 remaining-tokens-header-name="x-gateway-remaining-tokens"
+                                 remaining-quota-tokens-header-name="x-gateway-remaining-quota"
+                                 tokens-consumed-header-name="x-gateway-tokens-consumed" />
+            </when>
+            <otherwise>
+                <llm-token-limit counter-key="@("team-sandbox-" + (string)context.Variables["callerAppId"])" tokens-per-minute="5000"
+                                 token-quota="50000" token-quota-period="Daily" estimate-prompt-tokens="false"
+                                 remaining-tokens-header-name="x-gateway-remaining-tokens"
+                                 remaining-quota-tokens-header-name="x-gateway-remaining-quota"
+                                 tokens-consumed-header-name="x-gateway-tokens-consumed" />
+            </otherwise>
+        </choose>
+
+        <llm-emit-token-metric namespace="ai-gateway">
+            <dimension name="Team" value="@((string)context.Variables["team"])" />
+            <dimension name="Agent" value="@((string)context.Variables["agent"])" />
+        </llm-emit-token-metric>
+
+        <!-- Replace the caller's token with the gateway's own: only the gateway needs a role on Foundry. -->
+        <authentication-managed-identity resource="https://ai.azure.com" />
+        <set-header name="x-ai-gateway-team" exists-action="override">
+            <value>@((string)context.Variables["team"])</value>
+        </set-header>
+        <set-backend-service backend-id="foundry-project" />
+    </inbound>
+    <backend>
+        <!-- No retry here: an agent turn runs several model and tool calls, so repeating it doubles cost, and
+             the caller already retries on 429 with Retry-After. An agent turn can take a minute: allow 5. -->
+        <forward-request timeout="300" />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
